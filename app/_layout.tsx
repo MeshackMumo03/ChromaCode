@@ -22,7 +22,7 @@ function RootLayoutNav() {
     if (!isLoading && !user) {
       router.replace('/login');
     }
-  }, [user, isLoading]);
+  }, [user, isLoading, router]);
 
   if (isLoading) {
     // Optionally render a loading screen
@@ -32,18 +32,10 @@ function RootLayoutNav() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
-        {!user ? (
-          <Stack.Group screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="login" />
-            <Stack.Screen name="register" />
-          </Stack.Group>
-        ) : (
-          <Stack.Group>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-            <Stack.Screen name="profile" options={{ presentation: 'modal', title: 'Profile' }} />
-          </Stack.Group>
-        )}
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+        <Stack.Screen name="profile" options={{ presentation: 'modal', title: 'Profile' }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
