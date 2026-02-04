@@ -9,13 +9,14 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "backend": "dotenv -e backend/.env pm2 start backend/src/server.js --name \"chromacode-backend\" --watch"
+    "backend": "dotenv -e ./.env node backend/src/server.js"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",
+    "bcryptjs": "^3.0.3",
     "concurrently": "^9.2.1",
     "expo": "~54.0.33",
     "expo-constants": "~18.0.13",
@@ -31,7 +32,8 @@
     "expo-symbols": "~1.0.8",
     "expo-system-ui": "~6.0.9",
     "expo-web-browser": "~15.0.10",
-    "mongodb": "^7.0.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongodb": "^7.1.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",

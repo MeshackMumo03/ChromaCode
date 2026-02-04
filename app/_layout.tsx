@@ -15,14 +15,14 @@ export const unstable_settings = {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, token } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (!isLoading && !token) {
       router.replace('/login');
     }
-  }, [user, isLoading, router]);
+  }, [token, isLoading, router]);
 
   if (isLoading) {
     // Optionally render a loading screen

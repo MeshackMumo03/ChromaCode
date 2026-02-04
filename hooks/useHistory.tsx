@@ -26,19 +26,17 @@ export function useHistory() {
   return context;
 }
 
+import Constants from 'expo-constants'; // Import Constants
+
 // Configure your backend URL here
 const getBaseUrl = () => {
-  // For Android Emulator: use 10.0.2.2
-  // For iOS Simulator: use localhost
-  // For Physical Device: use your computer's IP address (e.g., 192.168.1.100)
-  
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:5000/api'; // Android Emulator
-    // For physical Android device, use: 'http://YOUR_COMPUTER_IP:5000/api'
-  } else {
-    return 'http://localhost:5000/api'; // iOS Simulator
-    // For physical iOS device, use: 'http://YOUR_COMPUTER_IP:5000/api'
+  const hostUri = Constants.expoConfig?.hostUri;
+  if (hostUri) {
+    const parts = hostUri.split(':');
+    const hostname = parts[0];
+    return `http://${hostname}:5000/api`;
   }
+  return `http://localhost:5000/api`;
 };
 
 const BASE_URL = getBaseUrl();

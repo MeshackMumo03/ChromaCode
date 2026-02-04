@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import * as SecureStore from 'expo-secure-store'; // For storing JWT securely
+import { useRouter } from 'expo-router'; // Import useRouter
 
 interface AuthContextType {
   user: any; // Ideally, define a User interface
@@ -12,7 +13,22 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const BASE_URL = 'http://10.0.2.2:5000/api'; // Backend API URL
+import Constants from 'expo-constants'; // Import Constants
+
+// Dynamically determine BASE_URL
+const getBaseUrl = () => {
+  // Constants.expoConfig?.hostUri example: 192.168.1.100:8081 or tunnel.expo.dev:80
+  const hostUri = Constants.expoConfig?.hostUri;
+  if (hostUri) {
+    const parts = hostUri.split(':');
+    const hostname = parts[0]; // Get the IP address or tunnel domain
+    return `http://${hostname}:5000/api`;
+  }
+  // Fallback for web or if hostUri is not available
+  return `http://localhost:5000/api`;
+};
+
+const BASE_URL = getBaseUrl(); // Call the function to get the BASE_URL
 
 export function useAuth() {
   const context = useContext(AuthContext);
@@ -22,10 +38,11 @@ export function useAuth() {
   return context;
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter(); // Initialize router
 
   useEffect(() => {
     const loadStoredAuth = async () => {
@@ -57,15 +74,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
+      // Try to parse JSON, fall back to text for diagnostics
+      let data: any;
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        console.error('Non-JSON response during login:', text);
+        return false;
+      }
 
       if (response.ok) {
         setToken(data.token);
         setUser(data.user);
         await SecureStore.setItemAsync('userToken', data.token);
+        router.replace('/(tabs)'); // Navigate to main app
         return true;
       } else {
-        console.error('Login failed:', data.message);
+        console.error('Login failed:', data.message || data.error || data);
         return false;
       }
     } catch (error) {
@@ -87,15 +114,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ username, email, password }),
       });
 
-      const data = await response.json();
+      // Try to parse JSON, fall back to text for diagnostics
+      let data: any;
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        console.error('Non-JSON response during registration:', text);
+        return false;
+      }
 
       if (response.ok) {
         setToken(data.token);
         setUser(data.user);
         await SecureStore.setItemAsync('userToken', data.token);
+        router.replace('/(tabs)'); // Navigate to main app
         return true;
       } else {
-        console.error('Registration failed:', data.message);
+        console.error('Registration failed:', data.message || data.error || data);
         return false;
       }
     } catch (error) {
