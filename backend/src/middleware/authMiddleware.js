@@ -1,31 +1,39 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-require('dotenv').config({ path: '../../.env' }); // Adjust path for middleware
 
-const protect = async (req, res, next) => {
-  let token;
+const protect = async(req, res, next) => {
+    console.log('--- protect middleware entered ---');
+    let token;
 
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-    try {
-      // Get token from header
-      token = req.headers.authorization.split(' ')[1];
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+        console.log('Authorization header present.');
+        try {
+            // Get token from header
+            token = req.headers.authorization.split(' ')[1];
+            console.log('Token extracted:', token ? 'YES' : 'NO');
 
-      // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            // Verify token
+            console.log('JWT_SECRET available:', process.env.JWT_SECRET ? 'YES' : 'NO');
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            console.log('Token decoded:', decoded ? 'YES' : 'NO', 'User ID:', decoded.id);
 
-      // Get user from token
-      req.user = await User.findById(decoded.id).select('-password');
+            // Get user from token
+            req.user = await User.findById(decoded.id).select('-password');
+            console.log('req.user set:', req.user ? 'YES' : 'NO');
 
-      next();
-    } catch (error) {
-      console.error(error);
-      res.status(401).json({ message: 'Not authorized, token failed' });
+            next();
+        } catch (error) {
+            console.error('Error in protect middleware:', error);
+            res.status(401).json({ message: 'Not authorized, token failed' });
+        }
+    } else {
+        console.log('Authorization header NOT present or malformed.');
     }
-  }
 
-  if (!token) {
-    res.status(401).json({ message: 'Not authorized, no token' });
-  }
+    if (!token) {
+        console.log('No token found after processing. Sending 401.');
+        res.status(401).json({ message: 'Not authorized, no token' });
+    }
 };
 
 module.exports = protect;

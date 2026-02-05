@@ -3,13 +3,13 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "dev": "concurrently \"expo start --tunnel --port 8082\" \"npm run backend\"",
+    "dev": "concurrently \"expo start --tunnel --port 0\" \"npm run backend\"",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "backend": "dotenv -e ./.env node backend/src/server.js"
+    "backend": "dotenv -e ./backend/.env node backend/src/server.js"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

@@ -19,6 +19,9 @@ export default function HistoryScreen() {
       <View style={[styles.colorIndicator, { backgroundColor: item.code.color }]} />
       <View style={styles.itemTextContainer}>
         <ThemedText style={styles.itemName}>{item.code.name}</ThemedText>
+        {item.recipientUsername && (
+          <ThemedText style={styles.itemRecipient}>Sent to: {item.recipientUsername}</ThemedText>
+        )}
         <ThemedText style={styles.itemMeaning}>{item.code.meaning}</ThemedText>
         <ThemedText style={styles.itemTimestamp}>
           {new Date(item.timestamp).toLocaleString()}
@@ -98,6 +101,11 @@ const styles = StyleSheet.create({
   itemMeaning: {
     fontSize: 14,
     color: '#ccc',
+  },
+  itemRecipient: {
+    fontSize: 12,
+    color: '#a0a0a0',
+    marginTop: 2,
   },
   itemTimestamp: {
     fontSize: 12,

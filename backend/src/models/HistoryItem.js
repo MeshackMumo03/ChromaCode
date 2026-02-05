@@ -7,6 +7,10 @@ const HistoryItemSchema = mongoose.Schema(
       meaning: { type: String, required: true },
       color: { type: String, required: true },
     },
+    conversationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Conversation',
+    },
     timestamp: {
       type: Date,
       default: Date.now,

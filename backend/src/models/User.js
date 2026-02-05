@@ -25,6 +25,12 @@ const UserSchema = mongoose.Schema(
       type: String,
       default: 'https://www.gravatar.com/avatar/?d=mp', // Default gravatar
     },
+    friends: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
   },
   {
     timestamps: true,

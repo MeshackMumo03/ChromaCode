@@ -3,7 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const connectDB = require('./db');
-const userRoutes = require('./routes/userRoutes');
+const userRoutes = require('./routes/userRoutes'); // Uncommented
+const conversationRoutes = require('./routes/conversationRoutes');
 const HistoryItem = require('./models/HistoryItem');
 
 const app = express();
@@ -47,9 +48,15 @@ app.use((err, req, res, next) => {
     next(err);
 });
 
+// Test route
+app.post('/api/test', (req, res) => {
+  res.send('Test POST worked!');
+});
+
+
 // Routes
 // Log headers and body for register requests to aid debugging (placed before userRoutes)
-app.use('/api/users/register', (req, res, next) => {
+app.use('/api/users/register', (req, res, next) => { // Uncommented
     console.log('--- /api/users/register incoming ---');
     console.log('Method:', req.method);
     console.log('URL:', req.originalUrl || req.url);
@@ -63,7 +70,8 @@ app.use('/api/users/register', (req, res, next) => {
     console.log('-----------------------------------');
     next();
 });
-app.use('/api/users', userRoutes); // User authentication routes
+app.use('/api/users', userRoutes); // User authentication routes // Uncommented
+app.use('/api/conversations', conversationRoutes); // Conversation routes
 
 // GET /api/history - Fetch all history items
 app.get('/api/history', async(req, res) => {
@@ -120,8 +128,15 @@ app.listen(PORT, () => {
     console.log(`   GET    http://localhost:${PORT}/api/history`);
     console.log(`   POST   http://localhost:${PORT}/api/history`);
     console.log(`   DELETE http://localhost:${PORT}/api/history/:id`);
-    console.log(`   POST   http://localhost:${PORT}/api/users/register`);
-    console.log(`   POST   http://localhost:${PORT}/api/users/login`);
+    console.log(`   POST   http://localhost:${PORT}/api/users/register`); // Uncommented
+    console.log(`   POST   http://localhost:${PORT}/api/users/login`); // Uncommented
+    console.log(`   GET    http://localhost:${PORT}/api/users/search`); // Uncommented
+    console.log(`   POST   http://localhost:${PORT}/api/users/add-friend`); // Uncommented
+    console.log(`   GET    http://localhost:${PORT}/api/users/friends`); // Uncommented
+    console.log(`   GET    http://localhost:${PORT}/api/users/profile`); // Uncommented
+    console.log(`   PUT    http://localhost:${PORT}/api/users/profile`); // Uncommented
+    console.log(`   DELETE http://localhost:${PORT}/api/users/profile`); // Uncommented
+    console.log(`   POST   http://localhost:${PORT}/api/test`); // New test route
 });
 
 // Generic Error Handler (must be last middleware)
