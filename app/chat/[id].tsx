@@ -4,6 +4,8 @@ import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from 'react-native';
 
 const BASE_URL = 'http://172.30.10.196:5000/api';
 
@@ -25,6 +27,8 @@ export default function ChatScreen() {
   const [newMessage, setNewMessage] = useState('');
   const [conversation, setConversation] = useState<any>(null);
   const flatListRef = useRef<FlatList>(null);
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
 
   useEffect(() => {
     const fetchConversation = async () => {
@@ -80,7 +84,7 @@ export default function ChatScreen() {
   };
   
   return (
-    <ThemedView style={styles.container}>
+    <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
         ref={flatListRef}
         data={messages}
@@ -88,22 +92,27 @@ export default function ChatScreen() {
         renderItem={({ item }) => (
           <View style={[
             styles.messageContainer,
-            item.sender._id.toString() === user?._id?.toString() ? styles.myMessage : styles.theirMessage
+            item.sender._id.toString() === user?._id?.toString() ? styles.myMessage : styles.theirMessage,
+            { backgroundColor: item.sender._id.toString() === user?._id?.toString() ? colors.tint : (colorScheme === 'light' ? '#E0E0E0' : colors.icon) }
           ]}>
-            <ThemedText style={styles.messageText}>{item.text}</ThemedText>
-            <ThemedText style={styles.timestamp}>{new Date(item.timestamp).toLocaleTimeString()}</ThemedText>
+            <ThemedText style={[
+              styles.messageText,
+              { color: item.sender._id.toString() === user?._id?.toString() ? (colorScheme === 'light' ? '#fff' : colors.background) : colors.text }
+            ]}>{item.text}</ThemedText>
+            <ThemedText style={[styles.timestamp, { color: colors.icon }]}>{new Date(item.timestamp).toLocaleTimeString()}</ThemedText>
           </View>
         )}
         contentContainerStyle={styles.messagesList}
       />
-      <View style={styles.inputContainer}>
+      <View style={[styles.inputContainer, { borderTopColor: colors.icon, backgroundColor: colors.background }]}>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { borderColor: colors.icon, backgroundColor: colors.background, color: colors.text }]}
           value={newMessage}
           onChangeText={setNewMessage}
           placeholder="Type a message..."
+          placeholderTextColor={colors.icon}
         />
-        <Button title="Send" onPress={handleSendMessage} />
+        <Button title="Send" onPress={handleSendMessage} color={colors.tint} />
       </View>
     </ThemedView>
   );
@@ -112,7 +121,6 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f0f0',
   },
   messagesList: {
     padding: 10,
@@ -124,11 +132,9 @@ const styles = StyleSheet.create({
     maxWidth: '80%',
   },
   myMessage: {
-    backgroundColor: '#dcf8c6',
     alignSelf: 'flex-end',
   },
   theirMessage: {
-    backgroundColor: '#ffffff',
     alignSelf: 'flex-start',
   },
   messageText: {
@@ -136,7 +142,6 @@ const styles = StyleSheet.create({
   },
   timestamp: {
     fontSize: 10,
-    color: 'grey',
     alignSelf: 'flex-end',
     marginTop: 5,
   },
@@ -144,13 +149,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 10,
     borderTopWidth: 1,
-    borderTopColor: '#ccc',
-    backgroundColor: 'white',
   },
   input: {
     flex: 1,
     height: 40,
-    borderColor: '#ccc',
     borderWidth: 1,
     borderRadius: 20,
     paddingHorizontal: 15,

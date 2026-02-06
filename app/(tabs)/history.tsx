@@ -3,10 +3,14 @@ import { StyleSheet, FlatList, View, ActivityIndicator, RefreshControl } from 'r
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useHistory, HistoryItem } from '@/hooks/useHistory';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from 'react-native';
 
 export default function HistoryScreen() {
   const { history, isLoading, error, fetchHistory } = useHistory();
   const [refreshing, setRefreshing] = React.useState(false);
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
@@ -15,15 +19,15 @@ export default function HistoryScreen() {
   }, [fetchHistory]);
 
   const renderItem = ({ item }: { item: HistoryItem }) => (
-    <View style={styles.itemContainer}>
+    <View style={[styles.itemContainer, { backgroundColor: colors.background, borderBottomColor: colors.icon }]}>
       <View style={[styles.colorIndicator, { backgroundColor: item.code.color }]} />
       <View style={styles.itemTextContainer}>
-        <ThemedText style={styles.itemName}>{item.code.name}</ThemedText>
+        <ThemedText style={[styles.itemName, { color: colors.text }]}>{item.code.name}</ThemedText>
         {item.recipientUsername && (
-          <ThemedText style={styles.itemRecipient}>Sent to: {item.recipientUsername}</ThemedText>
+          <ThemedText style={[styles.itemRecipient, { color: colors.icon }]}>Sent to: {item.recipientUsername}</ThemedText>
         )}
-        <ThemedText style={styles.itemMeaning}>{item.code.meaning}</ThemedText>
-        <ThemedText style={styles.itemTimestamp}>
+        <ThemedText style={[styles.itemMeaning, { color: colors.icon }]}>{item.code.meaning}</ThemedText>
+        <ThemedText style={[styles.itemTimestamp, { color: colors.icon }]}>
           {new Date(item.timestamp).toLocaleString()}
         </ThemedText>
       </View>
@@ -31,8 +35,8 @@ export default function HistoryScreen() {
   );
 
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText style={styles.title}>History</ThemedText>
+    <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
+      <ThemedText style={[styles.title, { color: colors.text }]}>History</ThemedText>
       
       {error && (
         <View style={styles.errorContainer}>
@@ -45,8 +49,8 @@ export default function HistoryScreen() {
 
       {isLoading && history.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <ActivityIndicator size="large" />
-          <ThemedText style={styles.loadingText}>Loading history...</ThemedText>
+          <ActivityIndicator size="large" color={colors.tint}/>
+          <ThemedText style={[styles.loadingText, { color: colors.text }]}>Loading history...</ThemedText>
         </View>
       ) : history.length > 0 ? (
         <FlatList
@@ -54,12 +58,12 @@ export default function HistoryScreen() {
           renderItem={renderItem}
           keyExtractor={(item) => item._id}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.tint]} tintColor={colors.tint}/>
           }
         />
       ) : (
         <View style={styles.emptyContainer}>
-          <ThemedText>No codes sent yet.</ThemedText>
+          <ThemedText style={{ color: colors.text }}>No codes sent yet.</ThemedText>
         </View>
       )}
     </ThemedView>
@@ -81,9 +85,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 15,
     marginVertical: 5,
-    backgroundColor: '#333',
     borderRadius: 10,
     alignItems: 'center',
+    borderBottomWidth: 1,
   },
   colorIndicator: {
     width: 20,
@@ -100,16 +104,13 @@ const styles = StyleSheet.create({
   },
   itemMeaning: {
     fontSize: 14,
-    color: '#ccc',
   },
   itemRecipient: {
     fontSize: 12,
-    color: '#a0a0a0',
     marginTop: 2,
   },
   itemTimestamp: {
     fontSize: 12,
-    color: '#999',
     marginTop: 5,
   },
   emptyContainer: {

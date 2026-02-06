@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "concurrently \"expo start --tunnel --port 0\" \"npm run backend\"",
+    "dev:qr": "concurrently \"expo start --tunnel\" \"npm run backend\"",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
     "ios": "expo start --ios",

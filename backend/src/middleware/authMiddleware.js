@@ -1,7 +1,8 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const asyncHandler = require('express-async-handler'); // Add this line
 
-const protect = async(req, res, next) => {
+const protect = asyncHandler(async (req, res, next) => {
     console.log('--- protect middleware entered ---');
     let token;
 
@@ -34,6 +35,6 @@ const protect = async(req, res, next) => {
         console.log('No token found after processing. Sending 401.');
         res.status(401).json({ message: 'Not authorized, no token' });
     }
-};
+});
 
 module.exports = protect;

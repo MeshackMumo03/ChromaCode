@@ -5,7 +5,8 @@ const mongoose = require('mongoose');
 const connectDB = require('./db');
 const userRoutes = require('./routes/userRoutes'); // Uncommented
 const conversationRoutes = require('./routes/conversationRoutes');
-const HistoryItem = require('./models/HistoryItem');
+const codeRoutes = require('./routes/codeRoutes'); // Add this line
+const historyRoutes = require('./routes/historyRoutes'); // Add this line
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -72,48 +73,8 @@ app.use('/api/users/register', (req, res, next) => { // Uncommented
 });
 app.use('/api/users', userRoutes); // User authentication routes // Uncommented
 app.use('/api/conversations', conversationRoutes); // Conversation routes
-
-// GET /api/history - Fetch all history items
-app.get('/api/history', async(req, res) => {
-    try {
-        console.log('GET /api/history - Fetching history');
-
-        const items = await HistoryItem.find().sort({ timestamp: -1 });
-        res.json(items);
-    } catch (error) {
-        console.error('Error fetching history:', error);
-        res.status(500).json({ error: 'Failed to fetch history' });
-    }
-});
-
-// POST /api/history - Add new history item
-app.post('/api/history', async(req, res) => {
-    try {
-        const { code } = req.body;
-        console.log('POST /api/history - Adding item:', code && code.name ? code.name : code);
-
-        const newItem = new HistoryItem({ code });
-        await newItem.save();
-        res.status(201).json(newItem);
-    } catch (error) {
-        console.error('Error adding history item:', error);
-        res.status(500).json({ error: 'Failed to add history item' });
-    }
-});
-
-// DELETE /api/history/:id - Delete a history item (optional)
-app.delete('/api/history/:id', async(req, res) => {
-    try {
-        const { id } = req.params;
-        console.log('DELETE /api/history/:id - Deleting item:', id);
-
-        await HistoryItem.findByIdAndDelete(id);
-        res.json({ message: 'Item deleted' });
-    } catch (error) {
-        console.error('Error deleting history item:', error);
-        res.status(500).json({ error: 'Failed to delete history item' });
-    }
-});
+app.use('/api/codes', codeRoutes); // Code routes
+app.use('/api/history', historyRoutes); // History routes // Add this line
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -128,15 +89,19 @@ app.listen(PORT, () => {
     console.log(`   GET    http://localhost:${PORT}/api/history`);
     console.log(`   POST   http://localhost:${PORT}/api/history`);
     console.log(`   DELETE http://localhost:${PORT}/api/history/:id`);
-    console.log(`   POST   http://localhost:${PORT}/api/users/register`); // Uncommented
-    console.log(`   POST   http://localhost:${PORT}/api/users/login`); // Uncommented
-    console.log(`   GET    http://localhost:${PORT}/api/users/search`); // Uncommented
-    console.log(`   POST   http://localhost:${PORT}/api/users/add-friend`); // Uncommented
-    console.log(`   GET    http://localhost:${PORT}/api/users/friends`); // Uncommented
-    console.log(`   GET    http://localhost:${PORT}/api/users/profile`); // Uncommented
-    console.log(`   PUT    http://localhost:${PORT}/api/users/profile`); // Uncommented
-    console.log(`   DELETE http://localhost:${PORT}/api/users/profile`); // Uncommented
-    console.log(`   POST   http://localhost:${PORT}/api/test`); // New test route
+    console.log(`   POST   http://localhost:${PORT}/api/users/register`);
+    console.log(`   POST   http://localhost:${PORT}/api/users/login`);
+    console.log(`   GET    http://localhost:${PORT}/api/users/search`);
+    console.log(`   POST   http://localhost:${PORT}/api/users/add-friend`);
+    console.log(`   GET    http://localhost:${PORT}/api/users/friends`);
+    console.log(`   GET    http://localhost:${PORT}/api/users/profile`);
+    console.log(`   PUT    http://localhost:${PORT}/api/users/profile`);
+    console.log(`   DELETE http://localhost:${PORT}/api/users/profile`);
+    console.log(`   GET    http://localhost:${PORT}/api/codes`);
+    console.log(`   POST   http://localhost:${PORT}/api/codes`);
+    console.log(`   PUT    http://localhost:${PORT}/api/codes/:id`);
+    console.log(`   DELETE http://localhost:${PORT}/api/codes/:id`);
+    console.log(`   POST   http://localhost:${PORT}/api/test`);
 });
 
 // Generic Error Handler (must be last middleware)

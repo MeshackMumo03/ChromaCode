@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { StyleSheet, TextInput, Button, Alert } from 'react-native';
+import { StyleSheet, TextInput, Button, Alert, Image } from 'react-native';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'expo-router';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from 'react-native';
 
 export default function RegisterScreen() {
   const [username, setUsername] = useState('');
@@ -11,6 +13,8 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const { register, isLoading } = useAuth();
   const router = useRouter();
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
 
   const handleRegister = async () => {
     if (!username || !email || !password) {
@@ -20,39 +24,43 @@ export default function RegisterScreen() {
 
     const success = await register(username, email, password);
     if (success) {
-      router.replace('/'); // Navigate to home screen or authenticated area
+      router.replace('/');
     } else {
       Alert.alert('Registration Failed', 'User already exists or network error.');
     }
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText style={styles.title}>Register</ThemedText>
+    <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
+      <Image source={require('@/assets/images/icon.png')} style={styles.logo} />
+      <ThemedText style={[styles.title, { color: colors.text }]}>Register</ThemedText>
       <TextInput
-        style={styles.input}
+        style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: colors.background }]}
         placeholder="Username"
+        placeholderTextColor={colors.icon}
         value={username}
         onChangeText={setUsername}
         autoCapitalize="none"
       />
       <TextInput
-        style={styles.input}
+        style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: colors.background }]}
         placeholder="Email"
+        placeholderTextColor={colors.icon}
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
       />
       <TextInput
-        style={styles.input}
+        style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: colors.background }]}
         placeholder="Password"
+        placeholderTextColor={colors.icon}
         value={password}
         onChangeText={setPassword}
         secureTextEntry
       />
-      <Button title={isLoading ? 'Registering...' : 'Register'} onPress={handleRegister} disabled={isLoading} />
-      <ThemedText style={styles.link} onPress={() => router.push('/login')}>
+      <Button title={isLoading ? 'Registering...' : 'Register'} onPress={handleRegister} disabled={isLoading} color={colors.tint} />
+      <ThemedText style={[styles.link, { color: colors.tint }]} onPress={() => router.push('/login')}>
         Already have an account? Login
       </ThemedText>
     </ThemedView>
@@ -66,6 +74,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
+  logo: {
+    width: 100,
+    height: 100,
+    marginBottom: 30,
+  },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
@@ -75,13 +88,10 @@ const styles = StyleSheet.create({
     width: '100%',
     padding: 15,
     borderWidth: 1,
-    borderColor: '#ccc',
     borderRadius: 8,
     marginBottom: 15,
-    backgroundColor: 'white',
   },
   link: {
     marginTop: 20,
-    color: 'blue',
   },
 });

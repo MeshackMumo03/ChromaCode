@@ -1,23 +1,29 @@
 
 import React, { useState } from 'react';
-import { StyleSheet, FlatList, Alert, View } from 'react-native';
+import { StyleSheet, FlatList, Alert, View, ActivityIndicator } from 'react-native';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
-import { CODES, Code } from '@/constants/codes';
+import { Code } from '@/constants/codes'; // Keep Code interface, remove CODES import
 import { ColorCodeButton } from '@/components/ColorCodeButton';
 import { useHistory } from '@/hooks/useHistory';
 import { useSettings } from '@/hooks/useSettings';
-import { Link } from 'expo-router';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import UserSelectionModal from '@/components/UserSelectionModal'; // Import the modal
+import UserSelectionModal from '@/components/UserSelectionModal';
 import { useAuth } from '@/hooks/useAuth';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from 'react-native';
+import { useCodes } from '@/hooks/useCodes'; // Import useCodes
+import { useRouter } from 'expo-router'; // Import useRouter
 
 export default function ChromaScreen() {
   const { addHistoryItem } = useHistory();
   const { visibleCodes } = useSettings();
   const { token } = useAuth();
+  const { codes, isLoading, fetchCodes } = useCodes(); // Get codes and loading state
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedCode, setSelectedCode] = useState<Code | null>(null);
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  const router = useRouter();
 
   const handlePress = (code: Code) => {
     setSelectedCode(code);
@@ -47,7 +53,8 @@ export default function ChromaScreen() {
 
       if (response.ok) {
         Alert.alert('Success', `Code sent to user!`);
-        addHistoryItem(selectedCode); // Still add to history after sending
+        // We now need to pass the selectedCode._id and recipientId to addHistoryItem
+        addHistoryItem(selectedCode, data.conversation._id, recipientId); // Assuming conversation._id is returned
       } else {
         Alert.alert('Send Failed', data.message || 'Could not send code.');
       }
@@ -60,22 +67,29 @@ export default function ChromaScreen() {
     setSelectedCode(null);
   };
 
-  const filteredCodes = CODES.filter(code => visibleCodes.includes(code.name));
+  const filteredCodes = codes.filter(code => visibleCodes.includes(code.name));
+
+  if (isLoading) {
+    return (
+      <ThemedView style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.tint} />
+        <ThemedText style={{ color: colors.text, marginTop: 10 }}>Loading codes...</ThemedText>
+      </ThemedView>
+    );
+  }
 
   return (
-    <ThemedView style={styles.container}>
+    <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <ThemedText style={styles.title}>Chroma Codes</ThemedText>
-        <Link href="/modal" style={styles.customizeButton}>
-          <IconSymbol size={28} name="gearshape.fill" />
-        </Link>
+        <ThemedText style={[styles.title, { color: colors.text }]}>Chroma Codes</ThemedText>
+        <Button title="Manage Codes" onPress={() => router.push('/manage-codes')} color={colors.tint} />
       </View>
       <FlatList
         data={filteredCodes}
         renderItem={({ item }) => (
           <ColorCodeButton code={item} onPress={() => handlePress(item)} />
         )}
-        keyExtractor={(item) => item.name}
+        keyExtractor={(item) => item._id} // Use _id as key
         numColumns={2}
         contentContainerStyle={styles.list}
       />
@@ -95,8 +109,7 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
   },
   title: {
@@ -107,8 +120,5 @@ const styles = StyleSheet.create({
   },
   list: {
     justifyContent: 'center',
-  },
-  customizeButton: {
-    marginRight: 15,
   },
 });

@@ -9,6 +9,8 @@ interface AuthContextType {
   register: (username: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
+  updateUser: (newUser: any) => void; // Add this
+  fetchUser: () => Promise<void>; // Add this
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -153,8 +155,39 @@ export function AuthProvider({ children }: { ReactNode }) {
     }
   };
 
+  const updateUser = (newUser: any) => {
+    setUser(newUser);
+  };
+
+  const fetchUser = async () => {
+    if (token) {
+      try {
+        const response = await fetch(`${BASE_URL}/users/profile`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data);
+        } else {
+          // Token might be invalid, so log out
+          logout();
+        }
+      } catch (error) {
+        console.error('Failed to fetch user profile:', error);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (token) {
+      fetchUser();
+    }
+  }, [token]);
+
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, token, login, register, logout, isLoading, updateUser, fetchUser }}>
       {children}
     </AuthContext.Provider>
   );

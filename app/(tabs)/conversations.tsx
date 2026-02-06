@@ -4,6 +4,8 @@ import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'expo-router';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from 'react-native';
 
 const BASE_URL = 'http://172.30.10.196:5000/api';
 
@@ -22,6 +24,8 @@ export default function ConversationsScreen() {
   const { token, user } = useAuth();
   const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
 
   useEffect(() => {
     if (token) {
@@ -51,8 +55,8 @@ export default function ConversationsScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText style={styles.title}>Conversations</ThemedText>
+    <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
+      <ThemedText style={[styles.title, { color: colors.text }]}>Conversations</ThemedText>
       <FlatList
         data={conversations}
         keyExtractor={(item) => item._id}
@@ -60,11 +64,11 @@ export default function ConversationsScreen() {
           const otherParticipant = getOtherParticipant(item);
           return (
             <TouchableOpacity
-              style={styles.conversationItem}
+              style={[styles.conversationItem, { borderBottomColor: colors.icon }]}
               onPress={() => router.push(`/chat/${item._id}`)}
             >
-              <ThemedText style={styles.username}>{otherParticipant?.username}</ThemedText>
-              <ThemedText style={styles.lastMessage}>{item.lastMessage?.text}</ThemedText>
+              <ThemedText style={[styles.username, { color: colors.text }]}>{otherParticipant?.username}</ThemedText>
+              <ThemedText style={[styles.lastMessage, { color: colors.icon }]}>{item.lastMessage?.text}</ThemedText>
             </TouchableOpacity>
           );
         }}
@@ -87,7 +91,6 @@ const styles = StyleSheet.create({
   conversationItem: {
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
   },
   username: {
     fontSize: 18,
@@ -95,6 +98,5 @@ const styles = StyleSheet.create({
   },
   lastMessage: {
     fontSize: 14,
-    color: 'gray',
   },
 });

@@ -8,6 +8,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { HistoryProvider } from '@/hooks/useHistory';
 import { SettingsProvider } from '@/hooks/useSettings';
+import { CodesProvider } from '@/hooks/useCodes'; // Add this line
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -34,8 +35,6 @@ function RootLayoutNav() {
       <Stack>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-        <Stack.Screen name="profile" options={{ presentation: 'modal', title: 'Profile' }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
@@ -47,7 +46,9 @@ export default function RootLayout() {
     <AuthProvider>
       <HistoryProvider>
         <SettingsProvider>
-          <RootLayoutNav />
+          <CodesProvider>
+            <RootLayoutNav />
+          </CodesProvider>
         </SettingsProvider>
       </HistoryProvider>
     </AuthProvider>

@@ -7,13 +7,16 @@ export interface HistoryItem {
   _id: string;
   code: Code;
   timestamp: string;
-  conversationId?: string; // Add conversationId
-  recipientUsername?: string; // Add recipientUsername
+  conversationId?: string;
+  recipient?: {
+    _id: string;
+    username: string;
+  };
 }
 
 interface HistoryContextType {
   history: HistoryItem[];
-  addHistoryItem: (code: Code, conversationId?: string) => Promise<void>;
+  addHistoryItem: (code: Code, conversationId: string, recipientId: string) => Promise<void>;
   fetchHistory: () => Promise<void>;
   isLoading: boolean;
   error: string | null;
@@ -60,9 +63,7 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    try {
-      console.log('Fetching history from:', `${BASE_URL}/history`);
-      
+    try {      
       const response = await fetch(`${BASE_URL}/history`, {
         method: 'GET',
         headers: {
@@ -70,42 +71,13 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
           'Authorization': `Bearer ${token}`, // Use token for authentication
         },
       });
-      
-      console.log('Response status:', response.status);
-      
+            
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       let data: HistoryItem[] = await response.json();
-      console.log('Fetched history:', data.length, 'items');
-
-      // For each history item with a conversationId, fetch the recipient's username
-      const historyWithRecipients = await Promise.all(data.map(async (item) => {
-        if (item.conversationId) {
-          try {
-            const convoResponse = await fetch(`${BASE_URL}/conversations/${item.conversationId}`, {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-              },
-            });
-            if (convoResponse.ok) {
-              const convoData = await convoResponse.json();
-              // Find the other participant
-              const otherParticipant = convoData.conversation.participants.find(
-                (p: any) => p._id !== user?._id
-              );
-              return { ...item, recipientUsername: otherParticipant?.username };
-            }
-          } catch (convoError) {
-            console.error('Failed to fetch conversation for history item:', item.conversationId, convoError);
-            // Continue without recipientUsername if there's an error
-          }
-        }
-        return item;
-      }));
-
-      setHistory(historyWithRecipients);
+      setHistory(data);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('Failed to fetch history:', errorMessage);
@@ -119,7 +91,7 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const addHistoryItem = async (code: Code, conversationId?: string) => {
+  const addHistoryItem = async (code: Code, conversationId: string, recipientId: string) => {
     setIsLoading(true);
     setError(null);
     
@@ -129,24 +101,20 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
         return;
     }
 
-    try {
-      console.log('Adding history item:', code.name);
-      
+    try {      
       const response = await fetch(`${BASE_URL}/history`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`, // Use token for authentication
         },
-        body: JSON.stringify({ code, conversationId }),
+        body: JSON.stringify({ code, conversationId, recipientId }), // Include conversationId and recipientId
       });
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
-      console.log('History item added successfully');
-      
+            
       // After adding, refetch the history to update the UI
       await fetchHistory();
     } catch (error) {
@@ -167,4 +135,3 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
       {children}
     </HistoryContext.Provider>
   );
-}
