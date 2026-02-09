@@ -4,10 +4,10 @@ const codeController = require('../controllers/codeController'); // Import entir
 const authMiddleware = require('../middleware/authMiddleware'); // Import entire authMiddleware object
 
 router.route('/')
-    .get(authMiddleware.protect, codeController.getCodes)
-    .post(authMiddleware.protect, codeController.createCode);
+    .get(codeController.getCodes)
+    .post(codeController.createCode);
 router.route('/:id')
-    .put(authMiddleware.protect, codeController.updateCode)
-    .delete(authMiddleware.protect, codeController.deleteCode);
+    .put(codeController.updateCode)
+    .delete(codeController.deleteCode);
 
 module.exports = router;

@@ -1,11 +1,4 @@
-export interface Code {
-  _id: string;
-  name: string;
-  color: string;
-  meaning: string;
-}
-
-export const CODES: Code[] = [
+const PRESET_CODES = [
   { _id: '1', name: 'Code Silver', color: '#C0C0C0', meaning: 'Indicates that the person is feeling grateful or appreciative.' },
   { _id: '2', name: 'Code Gold', color: '#FFD700', meaning: 'Indicates that the person is feeling proud or accomplished.' },
   { _id: '3', name: 'Code Teal', color: '#008080', meaning: 'Indicates that the person is feeling curious or interested.' },
@@ -35,3 +28,5 @@ export const CODES: Code[] = [
   { _id: '27', name: 'Code Lec', color: '#ADD8E6', meaning: 'Class' },
   { _id: '28', name: 'Code Heavy Blue', color: '#00008B', meaning: 'Lonely' },
 ];
+
+module.exports = { PRESET_CODES };

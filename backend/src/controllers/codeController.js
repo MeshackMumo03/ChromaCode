@@ -1,11 +1,23 @@
 const Code = require('../models/Code');
+const { PRESET_CODES } = require('../constants/presetCodes');
 
 // @desc    Get all codes for a user
 // @route   GET /api/codes
 // @access  Private
 const getCodes = async (req, res) => {
-  const codes = await Code.find({ user: req.user.id });
-  res.json(codes);
+  // 1. Get user-specific codes from DB
+  const userCodes = await Code.find({ user: req.user.id });
+
+  // 2. Create a set of names of codes the user has already customized
+  const userCodeNames = new Set(userCodes.map(c => c.name));
+  
+  // 3. Filter preset codes to only include those the user hasn't customized
+  const uniquePresetCodes = PRESET_CODES.filter(pc => !userCodeNames.has(pc.name));
+
+  // 4. Combine the lists
+  const allCodes = [...userCodes, ...uniquePresetCodes];
+
+  res.json(allCodes);
 };
 
 // @desc    Create a new code

@@ -3,8 +3,8 @@ const router = express.Router();
 const conversationController = require('../controllers/conversationController');
 const authMiddleware = require('../middleware/authMiddleware'); // Import entire authMiddleware object
 
-router.route('/').post(authMiddleware.protect, conversationController.startConversation).get(authMiddleware.protect, conversationController.getConversations);
-router.route('/:id').get(authMiddleware.protect, conversationController.getConversation);
-router.route('/:id/messages').post(authMiddleware.protect, conversationController.sendMessage);
+router.route('/').post(conversationController.startConversation).get(conversationController.getConversations);
+router.route('/:id').get(conversationController.getConversation);
+router.route('/:id/messages').post(conversationController.sendMessage);
 
 module.exports = router;

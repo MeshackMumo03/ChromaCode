@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { StyleSheet, FlatList, Alert, View, ActivityIndicator } from 'react-native';
+import { StyleSheet, FlatList, Alert, View, ActivityIndicator, Button } from 'react-native';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { Code } from '@/constants/codes'; // Keep Code interface, remove CODES import

@@ -23,8 +23,8 @@ export default function HistoryScreen() {
       <View style={[styles.colorIndicator, { backgroundColor: item.code.color }]} />
       <View style={styles.itemTextContainer}>
         <ThemedText style={[styles.itemName, { color: colors.text }]}>{item.code.name}</ThemedText>
-        {item.recipientUsername && (
-          <ThemedText style={[styles.itemRecipient, { color: colors.icon }]}>Sent to: {item.recipientUsername}</ThemedText>
+        {item.recipient && (
+          <ThemedText style={[styles.itemRecipient, { color: colors.icon }]}>Sent to: {item.recipient.username}</ThemedText>
         )}
         <ThemedText style={[styles.itemMeaning, { color: colors.icon }]}>{item.code.meaning}</ThemedText>
         <ThemedText style={[styles.itemTimestamp, { color: colors.icon }]}>

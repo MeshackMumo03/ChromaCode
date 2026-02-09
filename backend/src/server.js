@@ -51,7 +51,7 @@ app.use((err, req, res, next) => {
 
 // Test route
 app.post('/api/test', (req, res) => {
-  res.send('Test POST worked!');
+    res.send('Test POST worked!');
 });
 
 
@@ -72,6 +72,18 @@ app.use('/api/users/register', (req, res, next) => { // Uncommented
     next();
 });
 app.use('/api/users', userRoutes); // User authentication routes // Uncommented
+
+// Custom middleware to apply protection
+const customProtectMiddleware = (req, res, next) => {
+    // Manually import authMiddleware here to try and bypass circular dependency issues
+    const authMiddleware = require('./middleware/authMiddleware');
+    authMiddleware(req, res, next);
+};
+
+app.use('/api/conversations', customProtectMiddleware);
+app.use('/api/codes', customProtectMiddleware);
+app.use('/api/history', customProtectMiddleware);
+
 app.use('/api/conversations', conversationRoutes); // Conversation routes
 app.use('/api/codes', codeRoutes); // Code routes
 app.use('/api/history', historyRoutes); // History routes // Add this line

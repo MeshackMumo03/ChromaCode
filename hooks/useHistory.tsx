@@ -135,3 +135,4 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
       {children}
     </HistoryContext.Provider>
   );
+}

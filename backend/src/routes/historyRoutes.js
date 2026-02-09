@@ -4,7 +4,7 @@ const HistoryItem = require('../models/HistoryItem'); // Assuming HistoryItem mo
 const authMiddleware = require('../middleware/authMiddleware'); // Import entire authMiddleware object
 
 // GET /api/history - Fetch all history items for the logged-in user
-router.get('/', authMiddleware.protect, async (req, res) => {
+router.get('/', async (req, res) => {
     try {
         // Ensure that only history items belonging to the logged-in user are fetched
         const items = await HistoryItem.find({ user: req.user.id }).populate('recipient', 'username').sort({ timestamp: -1 });
@@ -16,7 +16,7 @@ router.get('/', authMiddleware.protect, async (req, res) => {
 });
 
 // POST /api/history - Add new history item for the logged-in user
-router.post('/', authMiddleware.protect, async (req, res) => {
+router.post('/', async (req, res) => {
     try {
         const { code, conversationId, recipientId } = req.body; // recipientId is now passed
         
@@ -36,7 +36,7 @@ router.post('/', authMiddleware.protect, async (req, res) => {
 });
 
 // DELETE /api/history/:id - Delete a history item for the logged-in user
-router.delete('/:id', authMiddleware.protect, async (req, res) => {
+router.delete('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const item = await HistoryItem.findById(id);

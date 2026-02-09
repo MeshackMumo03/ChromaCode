@@ -84,7 +84,7 @@ const getConversation = asyncHandler(async (req, res) => {
 
 // @desc    Send a message in a conversation
 // @route   POST /api/conversations/:id/messages
-// @access  Private
+// // @access  Private
 const sendMessage = asyncHandler(async (req, res) => {
   const { text } = req.body;
   const senderId = req.user._id;
