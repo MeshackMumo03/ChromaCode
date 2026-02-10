@@ -4,8 +4,9 @@ import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/hooks/useAuth';
 import { Code } from '@/constants/codes';
+import { getBaseUrl } from '@/constants/api'; // Import getBaseUrl
 
-const BASE_URL = 'http://172.30.10.196:5000/api';
+const BASE_URL = getBaseUrl(); // Use the centralized getBaseUrl()
 
 interface User {
   _id: string;

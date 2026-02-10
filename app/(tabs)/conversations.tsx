@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/hooks/useAuth';
@@ -55,25 +56,27 @@ export default function ConversationsScreen() {
   };
 
   return (
-    <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ThemedText style={[styles.title, { color: colors.text }]}>Conversations</ThemedText>
-      <FlatList
-        data={conversations}
-        keyExtractor={(item) => item._id}
-        renderItem={({ item }) => {
-          const otherParticipant = getOtherParticipant(item);
-          return (
-            <TouchableOpacity
-              style={[styles.conversationItem, { borderBottomColor: colors.icon }]}
-              onPress={() => router.push(`/chat/${item._id}`)}
-            >
-              <ThemedText style={[styles.username, { color: colors.text }]}>{otherParticipant?.username}</ThemedText>
-              <ThemedText style={[styles.lastMessage, { color: colors.icon }]}>{item.lastMessage?.text}</ThemedText>
-            </TouchableOpacity>
-          );
-        }}
-      />
-    </ThemedView>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
+        <ThemedText style={[styles.title, { color: colors.text }]}>Conversations</ThemedText>
+        <FlatList
+          data={conversations}
+          keyExtractor={(item) => item._id}
+          renderItem={({ item }) => {
+            const otherParticipant = getOtherParticipant(item);
+            return (
+              <TouchableOpacity
+                style={[styles.conversationItem, { borderBottomColor: colors.icon }]}
+                onPress={() => router.push(`/chat/${item._id}`)}
+              >
+                <ThemedText style={[styles.username, { color: colors.text }]}>{otherParticipant?.username}</ThemedText>
+                <ThemedText style={[styles.lastMessage, { color: colors.icon }]}>{item.lastMessage?.text}</ThemedText>
+              </TouchableOpacity>
+            );
+          }}
+        />
+      </ThemedView>
+    </SafeAreaView>
   );
 }
 
@@ -81,6 +84,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 10,
+    paddingTop: 15,
   },
   title: {
     fontSize: 24,

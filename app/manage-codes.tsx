@@ -70,7 +70,9 @@ export default function CodeManagementScreen() {
   return (
     <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
       <ThemedText style={[styles.title, { color: colors.text }]}>Manage Codes</ThemedText>
-      <Button title="Add New Code" onPress={() => router.push('/code-form')} color={colors.tint} />
+      <TouchableOpacity style={[styles.button, { backgroundColor: colors.icon, marginTop: 10 }]} onPress={() => router.push('/code-form')}>
+        <ThemedText style={{ color: colors.background, fontWeight: 'bold', textAlign: 'center' }}>Add New Code</ThemedText>
+      </TouchableOpacity>
       {codes.length > 0 ? (
         <FlatList
           data={codes}
@@ -89,6 +91,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 10,
+    paddingTop: 15,
   },
   title: {
     fontSize: 24,

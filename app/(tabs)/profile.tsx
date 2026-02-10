@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, TextInput, Button, Alert, Image, ScrollView, View, ImageBackground } from 'react-native';
+import { StyleSheet, TextInput, Alert, Image, ScrollView, View, ImageBackground } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'expo-router';
+import { StyledButton } from '@/components/StyledButton'; // Import StyledButton
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from 'react-native';
+import { getBaseUrl } from '@/constants/api'; // Import getBaseUrl
 
-const BASE_URL = 'http://172.30.10.196:5000/api'; // Backend API URL
+const BASE_URL = getBaseUrl(); // Backend API URL
 
 export default function ProfileScreen() {
   const { user, token, logout, updateUser } = useAuth();
@@ -13,6 +18,8 @@ export default function ProfileScreen() {
   const [username, setUsername] = useState(user?.username || '');
   const [email, setEmail] = useState(user?.email || '');
   const [profilePicture, setProfilePicture] = useState(user?.profilePicture || '');
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
 
   useEffect(() => {
     if (user) {
@@ -104,64 +111,74 @@ export default function ProfileScreen() {
 
   if (!user) {
     return (
-      <ThemedView style={styles.container}>
-        <ThemedText>Please log in to view your profile.</ThemedText>
-        <Button title="Go to Login" onPress={() => router.replace('/login')} />
+      <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
+        <ThemedText style={{ color: colors.text }}>Please log in to view your profile.</ThemedText>
+        <StyledButton title="Go to Login" onPress={() => router.replace('/login')} />
       </ThemedView>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.headerContainer}>
-        <ImageBackground
-          source={{ uri: 'https://images.unsplash.com/photo-1434394354979-a235cd36269d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MTJ8fG1vdW50YWluc3xlbnwwfHwwfHw%3D&auto=format&fit=crop&w=900&q=60' }}
-          style={styles.headerBackground}
-        >
-        </ImageBackground>
-        <View style={styles.profilePictureContainer}>
-            <Image source={{ uri: profilePicture }} style={styles.profileImage} />
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView style={[styles.scrollViewContainer, { backgroundColor: colors.background }]}>
+        <View style={styles.headerContainer}>
+          <ImageBackground
+            source={{ uri: 'https://images.unsplash.com/photo-1434394354979-a235cd36269d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MTJ8fG1vdW50YWinsS1tYWktb3JldXItc2NhcmNoL3N0YXRpYy9tb3VudGFpbnN8ZW58MHx8MHx8&auto=format&fit=crop&w=900&q=60' }}
+            style={styles.headerBackground}
+          >
+          </ImageBackground>
+          <View style={styles.profilePictureContainer}>
+              <Image source={{ uri: profilePicture }} style={styles.profileImage} />
+          </View>
         </View>
-      </View>
-      
-      <View style={styles.userInfoContainer}>
-        <ThemedText style={styles.userName}>{username}</ThemedText>
-        <ThemedText style={styles.userEmail}>{email}</ThemedText>
-      </View>
-
-      <View style={styles.formContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Username"
-          value={username}
-          onChangeText={setUsername}
-          autoCapitalize="none"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Profile Picture URL"
-          value={profilePicture}
-          onChangeText={setProfilePicture}
-        />
-        <Button title="Update Profile" onPress={handleUpdateProfile} />
-
-        <View style={styles.buttonContainer}>
-            <ThemedText style={styles.logoutButton} onPress={handleLogout}>
-                Logout
-            </ThemedText>
-            <ThemedText style={styles.deleteButton} onPress={handleDeleteAccount}>
-                Delete Account
-            </ThemedText>
+        
+        <View style={styles.userInfoContainer}>
+          <ThemedText style={styles.userName}>{username}</ThemedText>
+          <ThemedText style={styles.userEmail}>{email}</ThemedText>
         </View>
-      </View>
-    </ScrollView>
+
+        <View style={styles.formContainer}>
+          <TextInput
+            style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: colors.background }]}
+            placeholder="Username"
+            placeholderTextColor={colors.icon}
+            value={username}
+            onChangeText={setUsername}
+            autoCapitalize="none"
+          />
+          <TextInput
+            style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: colors.background }]}
+            placeholder="Profile Picture URL"
+            placeholderTextColor={colors.icon}
+            value={profilePicture}
+            onChangeText={setProfilePicture}
+          />
+          <StyledButton title="Update Profile" onPress={handleUpdateProfile} style={styles.updateButton} />
+
+          <View style={styles.buttonContainer}>
+              <ThemedText style={[styles.logoutButton, { color: colors.tint }]} onPress={handleLogout}>
+                  Logout
+              </ThemedText>
+              <ThemedText style={[styles.deleteButton, { color: colors.tint }]} onPress={handleDeleteAccount}>
+                  Delete Account
+              </ThemedText>
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-    container: {
+    scrollViewContainer: {
         flex: 1,
-        backgroundColor: '#fff',
+    },
+    container: { // This container is used for the "Please log in" message
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+        paddingTop: 15,
     },
     headerContainer: {
         height: 200,
@@ -172,7 +189,7 @@ const styles = StyleSheet.create({
     },
     profilePictureContainer: {
         position: 'absolute',
-        top: 95, 
+        top: 95,
         left: 24,
         width: 90,
         height: 90,
@@ -208,9 +225,12 @@ const styles = StyleSheet.create({
         width: '100%',
         padding: 15,
         borderWidth: 1,
-        borderColor: '#ccc',
         borderRadius: 8,
         marginBottom: 15,
+    },
+    updateButton: {
+      width: '100%',
+      marginBottom: 15,
     },
     buttonContainer: {
         marginTop: 20,
@@ -218,11 +238,9 @@ const styles = StyleSheet.create({
         justifyContent: 'space-around',
     },
     logoutButton: {
-        color: 'blue',
         fontSize: 16,
     },
     deleteButton: {
-        color: 'red',
         fontSize: 16,
     },
 });

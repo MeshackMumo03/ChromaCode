@@ -82,7 +82,7 @@ const deleteCode = async (req, res) => {
     throw new Error('User not authorized');
   }
 
-  await code.remove();
+  await code.deleteOne();
 
   res.json({ id: req.params.id });
 };

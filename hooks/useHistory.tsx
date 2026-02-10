@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { Platform } from 'react-native';
 import { Code } from '@/constants/codes';
 import { useAuth } from '@/hooks/useAuth'; // Import useAuth
+import { getBaseUrl } from '@/constants/api'; // Import getBaseUrl from centralized file
 
 export interface HistoryItem {
   _id: string;
@@ -31,19 +32,6 @@ export function useHistory() {
   }
   return context;
 }
-
-import Constants from 'expo-constants'; // Import Constants
-
-// Configure your backend URL here
-const getBaseUrl = () => {
-  const hostUri = Constants.expoConfig?.hostUri;
-  if (hostUri) {
-    const parts = hostUri.split(':');
-    const hostname = parts[0];
-    return `http://${hostname}:5000/api`;
-  }
-  return `http://localhost:5000/api`;
-};
 
 const BASE_URL = getBaseUrl();
 

@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, TextInput, Button, Alert, View } from 'react-native';
+import { StyleSheet, TextInput, Alert, View } from 'react-native';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useCodes } from '@/hooks/useCodes';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from 'react-native';
+import { StyledButton } from '@/components/StyledButton'; // Import StyledButton
+import { useSettings } from '@/hooks/useSettings'; // Import useSettings
 
 export default function CodeFormScreen() {
   const { createCode, updateCode, codes, isLoading, error } = useCodes();
+  const { toggleCodeVisibility, addCodeToVisibleCodes } = useSettings(); // Use useSettings
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const isEditing = !!id; // Check if id exists to determine if in edit mode
@@ -42,6 +45,9 @@ export default function CodeFormScreen() {
       success = await updateCode(id as string, name, color, meaning);
     } else {
       success = await createCode(name, color, meaning);
+      if (success) {
+        addCodeToVisibleCodes(name); // Add new code to visible codes permanently
+      }
     }
 
     if (success) {
@@ -80,13 +86,13 @@ export default function CodeFormScreen() {
         onChangeText={setMeaning}
         multiline
       />
-      <Button
+      <StyledButton
         title={isEditing ? 'Update Code' : 'Create Code'}
         onPress={handleSubmit}
-        disabled={isLoading}
-        color={colors.tint}
+        isLoading={isLoading}
+        style={styles.button}
       />
-      <Button title="Cancel" onPress={() => router.back()} color={colors.icon} />
+      <StyledButton title="Cancel" onPress={() => router.back()} style={[styles.button, { backgroundColor: colors.icon, marginTop: 10 }]} />
     </ThemedView>
   );
 }
@@ -109,5 +115,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 8,
     marginBottom: 15,
+  },
+  button: {
+    width: '100%',
   },
 });

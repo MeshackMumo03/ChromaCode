@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, TextInput, Button, FlatList, Alert, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, TextInput, FlatList, Alert, TouchableOpacity } from 'react-native';
 
+import { StyledButton } from '@/components/StyledButton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { HelloWave } from '@/components/hello-wave';
@@ -153,7 +154,7 @@ export default function HomeScreen() {
           onChangeText={setSearchTerm}
           autoCapitalize="none"
         />
-        <Button title="Search" onPress={handleSearch} disabled={isLoading} color={colors.tint}/>
+        <StyledButton title="Search" onPress={handleSearch} isLoading={isLoading} />
       </View>
 
       {isLoading ? (
@@ -166,7 +167,7 @@ export default function HomeScreen() {
             <View style={styles.userResultItem}>
               <ThemedText style={{color: colors.text}}>{item.username}</ThemedText>
               {user?._id !== item._id && (
-                <Button title="Add Friend" onPress={() => handleAddFriend(item._id, item.username)} color={colors.tint}/>
+                <StyledButton title="Add Friend" onPress={() => handleAddFriend(item._id, item.username)} />
               )}
             </View>
           )}
@@ -223,6 +224,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 20,
+    paddingTop: 35,
   },
   title: {
     fontSize: 28,
@@ -241,6 +243,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     width: '100%',
     marginBottom: 15,
+    alignItems: 'center',
   },
   searchInput: {
     flex: 1,

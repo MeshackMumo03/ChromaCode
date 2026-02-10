@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, FlatList, View, ActivityIndicator, RefreshControl } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useHistory, HistoryItem } from '@/hooks/useHistory';
@@ -35,38 +36,40 @@ export default function HistoryScreen() {
   );
 
   return (
-    <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ThemedText style={[styles.title, { color: colors.text }]}>History</ThemedText>
-      
-      {error && (
-        <View style={styles.errorContainer}>
-          <ThemedText style={styles.errorText}>Error: {error}</ThemedText>
-          <ThemedText style={styles.errorHint}>
-            Make sure your backend server is running on port 5000
-          </ThemedText>
-        </View>
-      )}
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
+        <ThemedText style={[styles.title, { color: colors.text }]}>History</ThemedText>
+        
+        {error && (
+          <View style={styles.errorContainer}>
+            <ThemedText style={styles.errorText}>Error: {error}</ThemedText>
+            <ThemedText style={styles.errorHint}>
+              Make sure your backend server is running on port 5000
+            </ThemedText>
+          </View>
+        )}
 
-      {isLoading && history.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <ActivityIndicator size="large" color={colors.tint}/>
-          <ThemedText style={[styles.loadingText, { color: colors.text }]}>Loading history...</ThemedText>
-        </View>
-      ) : history.length > 0 ? (
-        <FlatList
-          data={history}
-          renderItem={renderItem}
-          keyExtractor={(item) => item._id}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.tint]} tintColor={colors.tint}/>
-          }
-        />
-      ) : (
-        <View style={styles.emptyContainer}>
-          <ThemedText style={{ color: colors.text }}>No codes sent yet.</ThemedText>
-        </View>
-      )}
-    </ThemedView>
+        {isLoading && history.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <ActivityIndicator size="large" color={colors.tint}/>
+            <ThemedText style={[styles.loadingText, { color: colors.text }]}>Loading history...</ThemedText>
+          </View>
+        ) : history.length > 0 ? (
+          <FlatList
+            data={history}
+            renderItem={renderItem}
+            keyExtractor={(item) => item._id}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.tint]} tintColor={colors.tint}/>
+            }
+          />
+        ) : (
+          <View style={styles.emptyContainer}>
+            <ThemedText style={{ color: colors.text }}>No codes sent yet.</ThemedText>
+          </View>
+        )}
+      </ThemedView>
+    </SafeAreaView>
   );
 }
 
@@ -74,6 +77,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 10,
+    paddingTop: 15,
   },
   title: {
     fontSize: 24,

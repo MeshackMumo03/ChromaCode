@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, TextInput, Button, FlatList, Alert, View } from 'react-native';
+import { StyleSheet, TextInput, FlatList, Alert, View } from 'react-native';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from 'react-native';
+import { getBaseUrl } from '@/constants/api'; // Import getBaseUrl
+import { StyledButton } from '@/components/StyledButton'; // Import StyledButton
 
-const BASE_URL = 'http://172.30.10.196:5000/api';
+const BASE_URL = getBaseUrl(); // Use the centralized getBaseUrl()
 
 interface Message {
   _id: string;
@@ -112,7 +114,7 @@ export default function ChatScreen() {
           placeholder="Type a message..."
           placeholderTextColor={colors.icon}
         />
-        <Button title="Send" onPress={handleSendMessage} color={colors.tint} />
+        <StyledButton title="Send" onPress={handleSendMessage} style={styles.sendButton} />
       </View>
     </ThemedView>
   );
@@ -121,6 +123,7 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: 15,
   },
   messagesList: {
     padding: 10,
@@ -149,6 +152,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 10,
     borderTopWidth: 1,
+    alignItems: 'center', // Align items vertically in the center
   },
   input: {
     flex: 1,
@@ -158,4 +162,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     marginRight: 10,
   },
+  sendButton: {
+    height: 40, // Match the height of the TextInput
+    justifyContent: 'center',
+    paddingVertical: 0, // Remove vertical padding to make it compact
+  }
 });

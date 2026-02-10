@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Code } from '@/constants/codes'; // We'll still use the Code interface from here
 import { useAuth } from './useAuth'; // Assuming useAuth is in the same directory
+import { getBaseUrl } from '@/constants/api'; // Import getBaseUrl from centralized file
 
 interface CodesContextType {
   codes: Code[];
@@ -13,18 +14,6 @@ interface CodesContextType {
 }
 
 const CodesContext = createContext<CodesContextType | undefined>(undefined);
-
-import Constants from 'expo-constants';
-
-const getBaseUrl = () => {
-  const hostUri = Constants.expoConfig?.hostUri;
-  if (hostUri) {
-    const parts = hostUri.split(':');
-    const hostname = parts[0];
-    return `http://${hostname}:5000/api`;
-  }
-  return `http://localhost:5000/api`;
-};
 
 const BASE_URL = getBaseUrl();
 

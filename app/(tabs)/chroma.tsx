@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
-import { StyleSheet, FlatList, Alert, View, ActivityIndicator, Button } from 'react-native';
+import { StyleSheet, FlatList, Alert, View, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { Code } from '@/constants/codes'; // Keep Code interface, remove CODES import
@@ -13,6 +14,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from 'react-native';
 import { useCodes } from '@/hooks/useCodes'; // Import useCodes
 import { useRouter } from 'expo-router'; // Import useRouter
+import { StyledButton } from '@/components/StyledButton'; // Import StyledButton
 
 export default function ChromaScreen() {
   const { addHistoryItem } = useHistory();
@@ -79,27 +81,29 @@ export default function ChromaScreen() {
   }
 
   return (
-    <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
-        <ThemedText style={[styles.title, { color: colors.text }]}>Chroma Codes</ThemedText>
-        <Button title="Manage Codes" onPress={() => router.push('/manage-codes')} color={colors.tint} />
-      </View>
-      <FlatList
-        data={filteredCodes}
-        renderItem={({ item }) => (
-          <ColorCodeButton code={item} onPress={() => handlePress(item)} />
-        )}
-        keyExtractor={(item) => item._id} // Use _id as key
-        numColumns={2}
-        contentContainerStyle={styles.list}
-      />
-      <UserSelectionModal
-        modalVisible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        onUserSelect={handleUserSelect}
-        code={selectedCode}
-      />
-    </ThemedView>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.header}>
+          <ThemedText style={[styles.title, { color: colors.text }]}>Chroma Codes</ThemedText>
+          <StyledButton title="Manage Codes" onPress={() => router.push('/manage-codes')} />
+        </View>
+        <FlatList
+          data={filteredCodes}
+          renderItem={({ item }) => (
+            <ColorCodeButton code={item} onPress={() => handlePress(item)} />
+          )}
+          keyExtractor={(item) => item._id} // Use _id as key
+          numColumns={2}
+          contentContainerStyle={styles.list}
+        />
+        <UserSelectionModal
+          modalVisible={modalVisible}
+          onClose={() => setModalVisible(false)}
+          onUserSelect={handleUserSelect}
+          code={selectedCode}
+        />
+      </ThemedView>
+    </SafeAreaView>
   );
 }
 
@@ -107,6 +111,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 10,
+    paddingTop: 15,
   },
   header: {
     justifyContent: 'center',

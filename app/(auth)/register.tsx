@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { StyleSheet, TextInput, Button, Alert, Image } from 'react-native';
+import { StyleSheet, TextInput, Alert, Image } from 'react-native';
+
+import { StyledButton } from '@/components/StyledButton';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/hooks/useAuth';
@@ -59,7 +61,7 @@ export default function RegisterScreen() {
         onChangeText={setPassword}
         secureTextEntry
       />
-      <Button title={isLoading ? 'Registering...' : 'Register'} onPress={handleRegister} disabled={isLoading} color={colors.tint} />
+      <StyledButton title="Register" onPress={handleRegister} isLoading={isLoading} style={styles.button} />
       <ThemedText style={[styles.link, { color: colors.tint }]} onPress={() => router.push('/login')}>
         Already have an account? Login
       </ThemedText>
@@ -90,6 +92,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 8,
     marginBottom: 15,
+  },
+  button: {
+    width: '100%',
   },
   link: {
     marginTop: 20,

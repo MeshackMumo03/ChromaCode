@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import * as SecureStore from 'expo-secure-store'; // For storing JWT securely
 import { useRouter } from 'expo-router'; // Import useRouter
+import { getBaseUrl } from '@/constants/api'; // Import getBaseUrl from centralized file
 
 interface AuthContextType {
   user: any; // Ideally, define a User interface
@@ -15,22 +16,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-import Constants from 'expo-constants'; // Import Constants
-
-// Dynamically determine BASE_URL
-const getBaseUrl = () => {
-  // Constants.expoConfig?.hostUri example: 192.168.1.100:8081 or tunnel.expo.dev:80
-  const hostUri = Constants.expoConfig?.hostUri;
-  if (hostUri) {
-    const parts = hostUri.split(':');
-    const hostname = parts[0]; // Get the IP address or tunnel domain
-    return `http://${hostname}:5000/api`;
-  }
-  // Fallback for web or if hostUri is not available
-  return `http://localhost:5000/api`;
-};
-
-const BASE_URL = getBaseUrl(); // Call the function to get the BASE_URL
+const BASE_URL = getBaseUrl(); // Use the centralized getBaseUrl()
 
 export function useAuth() {
   const context = useContext(AuthContext);
