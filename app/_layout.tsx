@@ -4,20 +4,35 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import { useEffect } from 'react';
 
+
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { HistoryProvider } from '@/hooks/useHistory';
 import { SettingsProvider } from '@/hooks/useSettings';
-import { CodesProvider } from '@/hooks/useCodes'; // Add this line
+import { CodesProvider } from '@/hooks/useCodes'; 
+import { useNotifications } from '@/hooks/useNotifications';
+import { SocketProvider } from '@/hooks/useSocket';
 
 export const unstable_settings = {
   anchor: '(tabs)',
 };
 
+import Constants from 'expo-constants';
+
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  const { user, isLoading, token } = useAuth();
+  const { isLoading, token } = useAuth();
   const router = useRouter();
+  
+  // Initialize notifications ONLY if not in Expo Go
+  useEffect(() => {
+    if (Constants.appOwnership !== 'expo') {
+      // Logic would go here if we didn't use a hook, 
+      // but since we do, we'll let the hook handle its own internal check.
+    }
+  }, []);
+  
+  useNotifications();
 
   useEffect(() => {
     if (!isLoading && !token) {
@@ -26,18 +41,20 @@ function RootLayoutNav() {
   }, [token, isLoading, router]);
 
   if (isLoading) {
-    // Optionally render a loading screen
     return null;
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <SocketProvider>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack>
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="chat" options={{ headerShown: false }} />
+        </Stack>
+        <StatusBar style="auto" />
+      </ThemeProvider>
+    </SocketProvider>
   );
 }
 

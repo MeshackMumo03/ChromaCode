@@ -18,6 +18,10 @@ const codeSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  sharedWith: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  }],
 });
 
 // Ensure that each user can only have one code with a given name

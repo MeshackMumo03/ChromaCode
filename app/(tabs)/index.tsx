@@ -9,8 +9,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from 'react-native';
+import { getBaseUrl } from '@/constants/api';
 
-const BASE_URL = 'http://172.30.10.196:5000/api';
+const BASE_URL = getBaseUrl();
 
 interface User {
   _id: string;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, TextInput, Alert, Image, ScrollView, View, ImageBackground } from 'react-native';
+import { StyleSheet, TextInput, Alert, ScrollView, View, ImageBackground } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
@@ -128,7 +129,19 @@ export default function ProfileScreen() {
           >
           </ImageBackground>
           <View style={styles.profilePictureContainer}>
-              <Image source={{ uri: profilePicture }} style={styles.profileImage} />
+              <ExpoImage 
+                key={profilePicture}
+                source={{ uri: profilePicture || 'https://www.gravatar.com/avatar/?d=mp' }} 
+                style={styles.profileImage}
+                placeholder="https://www.gravatar.com/avatar/?d=mp"
+                contentFit="cover"
+                transition={500}
+                onError={() => {
+                  if (profilePicture) {
+                    Alert.alert('Invalid Image', 'The URL provided is not a direct image link. Please use a link ending in .jpg, .png, etc.');
+                  }
+                }}
+              />
           </View>
         </View>
         
@@ -153,6 +166,9 @@ export default function ProfileScreen() {
             value={profilePicture}
             onChangeText={setProfilePicture}
           />
+          <ThemedText style={styles.helperText}>
+            Note: Use a direct image link (ending in .jpg, .png, etc.)
+          </ThemedText>
           <StyledButton title="Update Profile" onPress={handleUpdateProfile} style={styles.updateButton} />
 
           <View style={styles.buttonContainer}>
@@ -226,7 +242,13 @@ const styles = StyleSheet.create({
         padding: 15,
         borderWidth: 1,
         borderRadius: 8,
+        marginBottom: 10,
+    },
+    helperText: {
+        fontSize: 12,
+        color: 'gray',
         marginBottom: 15,
+        fontStyle: 'italic',
     },
     updateButton: {
       width: '100%',

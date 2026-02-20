@@ -5,19 +5,35 @@ const { PRESET_CODES } = require('../constants/presetCodes');
 // @route   GET /api/codes
 // @access  Private
 const getCodes = async (req, res) => {
-  // 1. Get user-specific codes from DB
-  const userCodes = await Code.find({ user: req.user.id });
+  try {
+    // 1. Get codes owned by this user OR shared with this user
+    const userCodes = await Code.find({
+      $or: [
+        { user: req.user._id },
+        { sharedWith: req.user._id }
+      ]
+    });
 
-  // 2. Create a set of names of codes the user has already customized
-  const userCodeNames = new Set(userCodes.map(c => c.name));
-  
-  // 3. Filter preset codes to only include those the user hasn't customized
-  const uniquePresetCodes = PRESET_CODES.filter(pc => !userCodeNames.has(pc.name));
+    // 2. Create a set of names of codes the user already has (prevents preset duplicates)
+    const userCodeNames = new Set(userCodes.map(c => c.name));
+    
+    // 3. Filter preset codes to only include those the user doesn't already have a custom/propagated version of
+    const uniquePresetCodes = PRESET_CODES.filter(pc => !userCodeNames.has(pc.name));
 
-  // 4. Combine the lists
-  const allCodes = [...userCodes, ...uniquePresetCodes];
+    // 4. Combine the lists
+    // We add a virtual _id or mock _id for preset codes that aren't in DB yet
+    const formattedPresets = uniquePresetCodes.map((pc, index) => ({
+      ...pc,
+      _id: `preset-${index}`
+    }));
 
-  res.json(allCodes);
+    const allCodes = [...userCodes, ...formattedPresets];
+    console.log(`Returning ${allCodes.length} codes for user ${req.user.id} (${userCodes.length} custom/propagated)`);
+
+    res.json(allCodes);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
 // @desc    Create a new code

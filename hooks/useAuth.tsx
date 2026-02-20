@@ -20,8 +20,18 @@ const BASE_URL = getBaseUrl(); // Use the centralized getBaseUrl()
 
 export function useAuth() {
   const context = useContext(AuthContext);
+  // Return a safe empty state if context is missing (during initialization or if provider missing)
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    return {
+      user: null,
+      token: null,
+      login: async () => false,
+      register: async () => false,
+      logout: () => {},
+      isLoading: false,
+      updateUser: () => {},
+      fetchUser: async () => {},
+    };
   }
   return context;
 }
@@ -75,9 +85,17 @@ export function AuthProvider({ children }: { ReactNode }) {
 
       if (response.ok) {
         setToken(data.token);
-        setUser(data.user);
+        setUser({
+          _id: data._id,
+          username: data.username,
+          email: data.email,
+          profilePicture: data.profilePicture,
+          friends: data.friends,
+          pushToken: data.pushToken
+        });
         await SecureStore.setItemAsync('userToken', data.token);
-        router.replace('/(tabs)'); // Navigate to main app
+        // Slight delay to ensure navigation state is ready
+        setTimeout(() => router.replace('/(tabs)'), 100);
         return true;
       } else {
         console.error('Login failed:', data.message || data.error || data);
@@ -115,9 +133,17 @@ export function AuthProvider({ children }: { ReactNode }) {
 
       if (response.ok) {
         setToken(data.token);
-        setUser(data.user);
+        setUser({
+          _id: data._id,
+          username: data.username,
+          email: data.email,
+          profilePicture: data.profilePicture,
+          friends: data.friends,
+          pushToken: data.pushToken
+        });
         await SecureStore.setItemAsync('userToken', data.token);
-        router.replace('/(tabs)'); // Navigate to main app
+        // Slight delay to ensure navigation state is ready
+        setTimeout(() => router.replace('/(tabs)'), 100);
         return true;
       } else {
         console.error('Registration failed:', data.message || data.error || data);
@@ -155,8 +181,10 @@ export function AuthProvider({ children }: { ReactNode }) {
         });
         if (response.ok) {
           const data = await response.json();
+          // Profile endpoint returns the raw user object usually, 
+          // let's ensure it matches our structure.
           setUser(data);
-        } else {
+        } else if (response.status === 401) {
           // Token might be invalid, so log out
           logout();
         }

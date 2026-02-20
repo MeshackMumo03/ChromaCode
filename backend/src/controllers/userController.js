@@ -113,10 +113,14 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     const updatedUser = await user.save();
 
     res.json({
-      _id: updatedUser.id,
-      username: updatedUser.username,
-      email: updatedUser.email,
-      profilePicture: updatedUser.profilePicture,
+      user: {
+        _id: updatedUser.id,
+        username: updatedUser.username,
+        email: updatedUser.email,
+        profilePicture: updatedUser.profilePicture,
+        friends: updatedUser.friends,
+        pushToken: updatedUser.pushToken,
+      },
       token: generateToken(updatedUser._id),
     });
   } else {
@@ -208,6 +212,23 @@ const getFriends = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Update user push token
+// @route   PUT /api/users/push-token
+// @access  Private
+const updatePushToken = asyncHandler(async (req, res) => {
+  const { pushToken } = req.body;
+  const user = await User.findById(req.user._id);
+
+  if (user) {
+    user.pushToken = pushToken;
+    await user.save();
+    res.json({ message: 'Push token updated' });
+  } else {
+    res.status(404);
+    throw new Error('User not found');
+  }
+});
+
 // Generate JWT
 const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -225,4 +246,5 @@ module.exports = {
     searchUsers,
     addFriend,
     getFriends,
+    updatePushToken,
 };

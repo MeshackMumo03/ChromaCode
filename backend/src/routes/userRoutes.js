@@ -16,5 +16,6 @@ router
 router.get('/search', protect, userController.searchUsers);
 router.post('/add-friend', protect, userController.addFriend);
 router.get('/friends', protect, userController.getFriends);
+router.put('/push-token', protect, userController.updatePushToken);
 
 module.exports = router;

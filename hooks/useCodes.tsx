@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { Code } from '@/constants/codes'; // We'll still use the Code interface from here
 import { useAuth } from './useAuth'; // Assuming useAuth is in the same directory
 import { getBaseUrl } from '@/constants/api'; // Import getBaseUrl from centralized file
@@ -31,7 +31,7 @@ export function CodesProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const { token } = useAuth();
 
-  const fetchCodes = async () => {
+  const fetchCodes = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     if (!token) {
@@ -59,7 +59,7 @@ export function CodesProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [token]);
 
   const createCode = async (name: string, color: string, meaning: string): Promise<boolean> => {
     setIsLoading(true);

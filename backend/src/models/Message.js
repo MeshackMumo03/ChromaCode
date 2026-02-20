@@ -15,6 +15,10 @@ const MessageSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  codeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Code',
+  },
   timestamp: {
     type: Date,
     default: Date.now,

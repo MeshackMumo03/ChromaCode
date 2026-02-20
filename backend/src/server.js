@@ -1,3 +1,4 @@
+require('dotenv').config();
 // Don't load dotenv here - it's already loaded by dotenv-cli in package.json
 const express = require('express');
 const cors = require('cors');
@@ -9,7 +10,58 @@ const codeRoutes = require('./routes/codeRoutes'); // Add this line
 const historyRoutes = require('./routes/historyRoutes'); // Add this line
 
 const app = express();
+const http = require('http').createServer(app);
+const io = require('socket.io')(http, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
 const PORT = process.env.PORT || 5000;
+
+// Socket.io connection handling
+const connectedUsers = new Map(); // userId -> socketId
+
+io.on('connection', (socket) => {
+    console.log('A user connected:', socket.id);
+
+    socket.on('join', (userId) => {
+        connectedUsers.set(userId, socket.id);
+        console.log(`User ${userId} joined with socket ${socket.id}`);
+        // Broadcast that this user is now online
+        io.emit('user_status_change', { userId, status: 'online' });
+    });
+
+    socket.on('typing', ({ conversationId, recipientId, senderId }) => {
+        const socketId = connectedUsers.get(recipientId);
+        if (socketId) {
+            io.to(socketId).emit('typing', { conversationId, senderId });
+        }
+    });
+
+    socket.on('stop_typing', ({ conversationId, recipientId, senderId }) => {
+        const socketId = connectedUsers.get(recipientId);
+        if (socketId) {
+            io.to(socketId).emit('stop_typing', { conversationId, senderId });
+        }
+    });
+
+    socket.on('disconnect', () => {
+        for (const [userId, socketId] of connectedUsers.entries()) {
+            if (socketId === socket.id) {
+                connectedUsers.delete(userId);
+                console.log(`User ${userId} disconnected`);
+                // Broadcast that this user is now offline
+                io.emit('user_status_change', { userId, status: 'offline' });
+                break;
+            }
+        }
+    });
+});
+
+// Make io accessible in routes/controllers
+app.set('io', io);
+app.set('connectedUsers', connectedUsers);
 
 // Debug: Check if JWT_SECRET is loaded
 console.log('JWT_SECRET loaded:', process.env.JWT_SECRET ? 'YES ✓' : 'NO ✗');
@@ -94,7 +146,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+http.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
     console.log(`📝 API endpoints:`);
     console.log(`   GET    http://localhost:${PORT}/api/health`);
