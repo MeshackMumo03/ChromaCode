@@ -86,7 +86,8 @@ async function registerForPushNotificationsAsync() {
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
       name: 'default',
-      importance: Notifications.AndroidImportance.DEFAULT,
+      importance: Notifications.AndroidImportance.HIGH,
+      showBadge: true,
     });
   }
 
@@ -108,7 +109,9 @@ async function registerForPushNotificationsAsync() {
       return;
     }
     // Note: You might need your Expo Project ID here if you have one
-    token = (await Notifications.getExpoPushTokenAsync()).data;
+    token = (await Notifications.getExpoPushTokenAsync({
+      projectId: '8fb4d373-8dce-4372-b53f-c46c2a075f17',
+    })).data;
   } else {
     console.log('Must use physical device for Push Notifications');
   }

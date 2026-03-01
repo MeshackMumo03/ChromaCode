@@ -17,20 +17,10 @@ export const unstable_settings = {
   anchor: '(tabs)',
 };
 
-import Constants from 'expo-constants';
-
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
   const { isLoading, token } = useAuth();
   const router = useRouter();
-  
-  // Initialize notifications ONLY if not in Expo Go
-  useEffect(() => {
-    if (Constants.appOwnership !== 'expo') {
-      // Logic would go here if we didn't use a hook, 
-      // but since we do, we'll let the hook handle its own internal check.
-    }
-  }, []);
   
   useNotifications();
 

@@ -11,6 +11,9 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from 'react-native';
 import { getBaseUrl } from '@/constants/api'; // Import getBaseUrl
 
+import * as ImagePicker from 'expo-image-picker';
+import { RefreshControl, Pressable } from 'react-native';
+
 const BASE_URL = getBaseUrl(); // Backend API URL
 
 export default function ProfileScreen() {
@@ -19,6 +22,8 @@ export default function ProfileScreen() {
   const [username, setUsername] = useState(user?.username || '');
   const [email, setEmail] = useState(user?.email || '');
   const [profilePicture, setProfilePicture] = useState(user?.profilePicture || '');
+  const [friendRequests, setFriendRequests] = useState<any[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
@@ -27,10 +32,24 @@ export default function ProfileScreen() {
       setUsername(user.username);
       setEmail(user.email);
       setProfilePicture(user.profilePicture);
+      fetchFriendRequests();
     }
   }, [user]);
 
-  const handleUpdateProfile = async () => {
+  const fetchFriendRequests = async () => {
+    if (!token) return;
+    try {
+      const response = await fetch(`${BASE_URL}/users/friend-requests`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (response.ok) setFriendRequests(data);
+    } catch (error) {
+      console.error('Error fetching friend requests:', error);
+    }
+  };
+
+  const handleUpdateProfile = async (imageUri?: string) => {
     if (!token) {
       Alert.alert('Error', 'Not authenticated.');
       return;
@@ -43,14 +62,18 @@ export default function ProfileScreen() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ username, email, profilePicture }),
+        body: JSON.stringify({ 
+          username, 
+          email, 
+          profilePicture: imageUri || profilePicture 
+        }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        Alert.alert('Success', 'Profile updated successfully.');
-        updateUser(data.user); // Update the user in the AuthContext
+        if (!imageUri) Alert.alert('Success', 'Profile updated successfully.');
+        updateUser(data.user);
       } else {
         Alert.alert('Update Failed', data.message || 'Could not update profile.');
       }
@@ -58,6 +81,81 @@ export default function ProfileScreen() {
       console.error('Network error during profile update:', error);
       Alert.alert('Error', 'Network error during profile update.');
     }
+  };
+
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'We need camera roll permissions to change your avatar.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+    });
+
+    if (!result.canceled) {
+      uploadToCloudinary(result.assets[0].uri);
+    }
+  };
+
+  const uploadToCloudinary = async (uri: string) => {
+    setRefreshing(true);
+    const formData = new FormData();
+    formData.append('file', {
+      uri,
+      type: 'image/jpeg',
+      name: 'avatar.jpg',
+    } as any);
+    formData.append('upload_preset', 'chromacode'); // You would normally use your preset here
+
+    try {
+      // Note: Using a public unsigned upload for demo purposes. 
+      // In production, you'd use a signed upload or a backend proxy.
+      const response = await fetch('https://api.cloudinary.com/v1_1/demo/image/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await response.json();
+      if (data.secure_url) {
+        setProfilePicture(data.secure_url);
+        handleUpdateProfile(data.secure_url);
+      }
+    } catch (error) {
+      console.error('Cloudinary upload error:', error);
+      Alert.alert('Upload Failed', 'Could not upload image to cloud.');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const handleRequestAction = async (requestId: string, action: 'accept' | 'decline') => {
+    try {
+      const response = await fetch(`${BASE_URL}/users/friend-request/${action}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ requestId }),
+      });
+
+      if (response.ok) {
+        setFriendRequests(prev => prev.filter(req => req._id !== requestId));
+        if (action === 'accept') Alert.alert('Accepted', 'Friend request accepted!');
+      }
+    } catch (error) {
+      console.error(`Error during friend request ${action}:`, error);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchFriendRequests();
+    setRefreshing(false);
   };
 
   const handleDeleteAccount = async () => {
@@ -121,28 +219,26 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView style={[styles.scrollViewContainer, { backgroundColor: colors.background }]}>
+      <ScrollView 
+        style={[styles.scrollViewContainer, { backgroundColor: colors.background }]}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
         <View style={styles.headerContainer}>
           <ImageBackground
-            source={{ uri: 'https://images.unsplash.com/photo-1434394354979-a235cd36269d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MTJ8fG1vdW50YWinsS1tYWktb3JldXItc2NhcmNoL3N0YXRpYy9tb3VudGFpbnN8ZW58MHx8MHx8&auto=format&fit=crop&w=900&q=60' }}
+            source={{ uri: 'https://images.unsplash.com/photo-1434394354979-a235cd36269d?auto=format&fit=crop&w=900&q=60' }}
             style={styles.headerBackground}
-          >
-          </ImageBackground>
-          <View style={styles.profilePictureContainer}>
+          />
+          <Pressable onPress={pickImage} style={styles.profilePictureContainer}>
               <ExpoImage 
-                key={profilePicture}
                 source={{ uri: profilePicture || 'https://www.gravatar.com/avatar/?d=mp' }} 
                 style={styles.profileImage}
-                placeholder="https://www.gravatar.com/avatar/?d=mp"
                 contentFit="cover"
                 transition={500}
-                onError={() => {
-                  if (profilePicture) {
-                    Alert.alert('Invalid Image', 'The URL provided is not a direct image link. Please use a link ending in .jpg, .png, etc.');
-                  }
-                }}
               />
-          </View>
+              <View style={styles.editBadge}>
+                <ThemedText style={styles.editBadgeText}>✎</ThemedText>
+              </View>
+          </Pressable>
         </View>
         
         <View style={styles.userInfoContainer}>
@@ -150,7 +246,31 @@ export default function ProfileScreen() {
           <ThemedText style={styles.userEmail}>{email}</ThemedText>
         </View>
 
+        {friendRequests.length > 0 && (
+          <View style={styles.requestsSection}>
+            <ThemedText style={styles.sectionTitle}>Friend Requests ({friendRequests.length})</ThemedText>
+            {friendRequests.map((req) => (
+              <View key={req._id} style={[styles.requestItem, { backgroundColor: colors.icon + '20' }]}>
+                <ExpoImage 
+                  source={{ uri: req.from.profilePicture || 'https://www.gravatar.com/avatar/?d=mp' }} 
+                  style={styles.requestAvatar} 
+                />
+                <ThemedText style={styles.requestName}>{req.from.username}</ThemedText>
+                <View style={styles.requestActions}>
+                  <Pressable onPress={() => handleRequestAction(req._id, 'accept')} style={styles.acceptBtn}>
+                    <ThemedText style={styles.btnText}>✓</ThemedText>
+                  </Pressable>
+                  <Pressable onPress={() => handleRequestAction(req._id, 'decline')} style={styles.declineBtn}>
+                    <ThemedText style={styles.btnText}>✕</ThemedText>
+                  </Pressable>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
         <View style={styles.formContainer}>
+          <ThemedText style={styles.sectionTitle}>Update Info</ThemedText>
           <TextInput
             style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: colors.background }]}
             placeholder="Username"
@@ -159,17 +279,7 @@ export default function ProfileScreen() {
             onChangeText={setUsername}
             autoCapitalize="none"
           />
-          <TextInput
-            style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: colors.background }]}
-            placeholder="Profile Picture URL"
-            placeholderTextColor={colors.icon}
-            value={profilePicture}
-            onChangeText={setProfilePicture}
-          />
-          <ThemedText style={styles.helperText}>
-            Note: Use a direct image link (ending in .jpg, .png, etc.)
-          </ThemedText>
-          <StyledButton title="Update Profile" onPress={handleUpdateProfile} style={styles.updateButton} />
+          <StyledButton title="Save Changes" onPress={() => handleUpdateProfile()} style={styles.updateButton} />
 
           <View style={styles.buttonContainer}>
               <ThemedText style={[styles.logoutButton, { color: colors.tint }]} onPress={handleLogout}>
@@ -189,50 +299,126 @@ const styles = StyleSheet.create({
     scrollViewContainer: {
         flex: 1,
     },
-    container: { // This container is used for the "Please log in" message
+    container: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
-        paddingTop: 15,
     },
     headerContainer: {
-        height: 200,
+        height: 180,
+        marginBottom: 20,
     },
     headerBackground: {
         width: '100%',
-        height: 140,
+        height: 120,
     },
     profilePictureContainer: {
         position: 'absolute',
-        top: 95,
-        left: 24,
-        width: 90,
-        height: 90,
-        borderRadius: 45,
+        top: 70,
+        left: 20,
+        width: 100,
+        height: 100,
+        borderRadius: 50,
         backgroundColor: '#fff',
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 2,
-        borderColor: '#C0C0C0'
+        borderWidth: 3,
+        borderColor: '#fff',
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
     },
     profileImage: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
+        width: '100%',
+        height: '100%',
+        borderRadius: 50,
+    },
+    editBadge: {
+      position: 'absolute',
+      bottom: 0,
+      right: 0,
+      backgroundColor: '#007AFF',
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 2,
+      borderColor: '#fff',
+    },
+    editBadgeText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: 'bold',
     },
     userInfoContainer: {
         alignItems: 'center',
-        paddingTop: 50,
-        paddingBottom: 20
+        paddingBottom: 20,
+        paddingHorizontal: 20,
     },
     userName: {
-        fontSize: 24,
+        fontSize: 26,
         fontWeight: 'bold',
     },
     userEmail: {
         fontSize: 16,
         color: 'gray',
+    },
+    requestsSection: {
+      paddingHorizontal: 20,
+      marginBottom: 20,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      marginBottom: 10,
+    },
+    requestItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 10,
+      borderRadius: 12,
+      marginBottom: 8,
+    },
+    requestAvatar: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      marginRight: 12,
+    },
+    requestName: {
+      flex: 1,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    requestActions: {
+      flexDirection: 'row',
+    },
+    acceptBtn: {
+      backgroundColor: '#34C759',
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginLeft: 10,
+    },
+    declineBtn: {
+      backgroundColor: '#FF3B30',
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginLeft: 10,
+    },
+    btnText: {
+      color: '#fff',
+      fontSize: 18,
+      fontWeight: 'bold',
     },
     formContainer: {
         paddingHorizontal: 20,
@@ -241,28 +427,25 @@ const styles = StyleSheet.create({
         width: '100%',
         padding: 15,
         borderWidth: 1,
-        borderRadius: 8,
-        marginBottom: 10,
-    },
-    helperText: {
-        fontSize: 12,
-        color: 'gray',
+        borderRadius: 12,
         marginBottom: 15,
-        fontStyle: 'italic',
     },
     updateButton: {
       width: '100%',
-      marginBottom: 15,
     },
     buttonContainer: {
-        marginTop: 20,
+        marginTop: 30,
         flexDirection: 'row',
         justifyContent: 'space-around',
+        paddingBottom: 40,
     },
     logoutButton: {
         fontSize: 16,
+        fontWeight: '600',
     },
     deleteButton: {
         fontSize: 16,
+        fontWeight: '600',
+        opacity: 0.7,
     },
 });

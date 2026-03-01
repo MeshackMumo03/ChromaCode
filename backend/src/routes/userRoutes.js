@@ -6,16 +6,19 @@ const protect = require('../middleware/authMiddleware'); // Import protect funct
 router.route('/register').post(userController.registerUser);
 router.post('/login', userController.loginUser);
 
-router.get('/', protect, userController.getUsers); // Removed protect
+router.get('/search', protect, userController.searchUsers);
+router.get('/friend-requests', protect, userController.getFriendRequests);
+router.get('/friends', protect, userController.getFriends);
+router.post('/friend-request', protect, userController.sendFriendRequest);
+router.post('/friend-request/accept', protect, userController.acceptFriendRequest);
+router.post('/friend-request/decline', protect, userController.declineFriendRequest);
+router.put('/push-token', protect, userController.updatePushToken);
+
+router.get('/', protect, userController.getUsers);
 router
   .route('/profile')
   .get(protect, userController.getUserProfile)
   .put(protect, userController.updateUserProfile)
   .delete(protect, userController.deleteUserProfile);
-
-router.get('/search', protect, userController.searchUsers);
-router.post('/add-friend', protect, userController.addFriend);
-router.get('/friends', protect, userController.getFriends);
-router.put('/push-token', protect, userController.updatePushToken);
 
 module.exports = router;

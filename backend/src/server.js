@@ -32,18 +32,17 @@ io.on('connection', (socket) => {
         io.emit('user_status_change', { userId, status: 'online' });
     });
 
-    socket.on('typing', ({ conversationId, recipientId, senderId }) => {
-        const socketId = connectedUsers.get(recipientId);
-        if (socketId) {
-            io.to(socketId).emit('typing', { conversationId, senderId });
-        }
+    socket.on('join_conversation', (conversationId) => {
+        socket.join(conversationId);
+        console.log(`Socket ${socket.id} joined conversation room ${conversationId}`);
     });
 
-    socket.on('stop_typing', ({ conversationId, recipientId, senderId }) => {
-        const socketId = connectedUsers.get(recipientId);
-        if (socketId) {
-            io.to(socketId).emit('stop_typing', { conversationId, senderId });
-        }
+    socket.on('typing', ({ conversationId, senderId, senderName }) => {
+        socket.to(conversationId).emit('typing', { conversationId, senderId, senderName });
+    });
+
+    socket.on('stop_typing', ({ conversationId, senderId }) => {
+        socket.to(conversationId).emit('stop_typing', { conversationId, senderId });
     });
 
     socket.on('disconnect', () => {

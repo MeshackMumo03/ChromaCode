@@ -9,6 +9,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from 'react-native';
 import { getBaseUrl } from '@/constants/api';
 import { useSocket } from '@/hooks/useSocket';
+import { Ionicons } from '@expo/vector-icons';
 
 const BASE_URL = getBaseUrl();
 
@@ -25,6 +26,9 @@ interface Conversation {
     sender: any;
   };
   updatedAt: string;
+  isGroup?: boolean;
+  name?: string;
+  groupImage?: string;
 }
 
 export default function ConversationsScreen() {
@@ -33,7 +37,7 @@ export default function ConversationsScreen() {
   const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [typingConversations, setTypingConversations] = useState<Record<string, boolean>>({});
+  const [typingConversations, setTypingConversations] = useState<Record<string, string | null>>({});
   const [onlineUsers, setOnlineUsers] = useState<Record<string, boolean>>({});
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -110,11 +114,11 @@ export default function ConversationsScreen() {
       };
 
       const handleTyping = (data: any) => {
-        setTypingConversations(prev => ({ ...prev, [data.conversationId]: true }));
+        setTypingConversations(prev => ({ ...prev, [data.conversationId]: data.senderName }));
       };
 
       const handleStopTyping = (data: any) => {
-        setTypingConversations(prev => ({ ...prev, [data.conversationId]: false }));
+        setTypingConversations(prev => ({ ...prev, [data.conversationId]: null }));
       };
 
       const handleStatusChange = (data: { userId: string, status: string }) => {
@@ -135,8 +139,16 @@ export default function ConversationsScreen() {
     }
   }, [socket, fetchConversations]);
 
-  const getOtherParticipant = (conversation: Conversation) => {
-    return conversation.participants.find(p => p._id.toString() !== user?._id?.toString());
+  const getConversationTitle = (conversation: Conversation) => {
+    if (conversation.isGroup) return conversation.name;
+    const other = conversation.participants.find(p => p._id.toString() !== user?._id?.toString());
+    return other?.username || 'Unknown';
+  };
+
+  const getConversationAvatar = (conversation: Conversation) => {
+    if (conversation.isGroup) return conversation.groupImage || 'https://cdn-icons-png.flaticon.com/512/166/166258.png';
+    const other = conversation.participants.find(p => p._id.toString() !== user?._id?.toString());
+    return other?.profilePicture || 'https://www.gravatar.com/avatar/?d=mp';
   };
 
   const formatTime = (timestamp: string) => {
@@ -160,7 +172,15 @@ export default function ConversationsScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
-        <ThemedText style={[styles.title, { color: colors.text }]}>Chats</ThemedText>
+        <View style={styles.header}>
+          <ThemedText style={[styles.title, { color: colors.text }]}>Chats</ThemedText>
+          <TouchableOpacity 
+            style={[styles.addGroupBtn, { backgroundColor: colors.tint }]}
+            onPress={() => router.push('/create-group')}
+          >
+            <Ionicons name="people-outline" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
         <FlatList
           data={conversations}
           keyExtractor={(item) => item._id}
@@ -173,8 +193,8 @@ export default function ConversationsScreen() {
             />
           }
           renderItem={({ item }) => {
-            const otherParticipant = getOtherParticipant(item);
-            const isTyping = typingConversations[item._id];
+            const typingName = typingConversations[item._id];
+            const otherParticipant = !item.isGroup ? item.participants.find(p => p._id !== user?._id) : null;
             const isOnline = otherParticipant ? onlineUsers[otherParticipant._id] : false;
 
             return (
@@ -184,7 +204,7 @@ export default function ConversationsScreen() {
               >
                 <View>
                   <Image 
-                    source={{ uri: otherParticipant?.profilePicture || 'https://www.gravatar.com/avatar/?d=mp' }} 
+                    source={{ uri: getConversationAvatar(item) }} 
                     style={styles.avatar} 
                   />
                   {isOnline && <View style={[styles.onlineDot, { backgroundColor: '#4CAF50' }]} />}
@@ -192,20 +212,20 @@ export default function ConversationsScreen() {
                 <View style={styles.content}>
                   <View style={styles.headerRow}>
                     <ThemedText style={[styles.username, { color: colors.text }]} numberOfLines={1}>
-                      {otherParticipant?.username}
+                      {getConversationTitle(item)}
                     </ThemedText>
-                    <ThemedText style={[styles.time, { color: isTyping ? '#4CAF50' : colors.icon }]}>
-                      {isTyping ? 'typing...' : formatTime(item.lastMessage?.timestamp || item.updatedAt)}
+                    <ThemedText style={[styles.time, { color: typingName ? '#4CAF50' : colors.icon }]}>
+                      {typingName ? 'typing...' : formatTime(item.lastMessage?.timestamp || item.updatedAt)}
                     </ThemedText>
                   </View>
                   <ThemedText 
                     style={[
                       styles.lastMessage, 
-                      { color: isTyping ? '#4CAF50' : colors.icon, fontWeight: isTyping ? 'bold' : 'normal' }
+                      { color: typingName ? '#4CAF50' : colors.icon, fontWeight: typingName ? 'bold' : 'normal' }
                     ]} 
                     numberOfLines={1}
                   >
-                    {isTyping ? 'Typing...' : (item.lastMessage?.text || 'No messages yet')}
+                    {typingName ? `${typingName} is typing...` : (item.lastMessage?.text || 'No messages yet')}
                   </ThemedText>
                 </View>
               </TouchableOpacity>
@@ -221,11 +241,28 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginVertical: 15,
+  },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    paddingHorizontal: 20,
-    marginVertical: 15,
+  },
+  addGroupBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   conversationItem: {
     flexDirection: 'row',

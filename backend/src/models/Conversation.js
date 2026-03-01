@@ -10,6 +10,22 @@ const ConversationSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Message',
   },
+  isGroup: {
+    type: Boolean,
+    default: false,
+  },
+  name: {
+    type: String,
+    trim: true,
+  },
+  groupImage: {
+    type: String,
+    default: '',
+  },
+  groupAdmin: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
 }, {
   timestamps: true,
 });

@@ -88,6 +88,35 @@ const startConversation = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Create a group chat
+// @route   POST /api/conversations/group
+// @access  Private
+const createGroupChat = asyncHandler(async (req, res) => {
+  const { participants, name } = req.body;
+
+  if (!participants || !name || participants.length < 1) {
+    res.status(400);
+    throw new Error('Please provide a group name and at least one other participant');
+  }
+
+  // Add current user to participants if not already included
+  const allParticipants = [...new Set([...participants, req.user._id.toString()])];
+
+  const conversation = await Conversation.create({
+    participants: allParticipants,
+    name,
+    isGroup: true,
+    groupAdmin: req.user._id,
+  });
+
+  const populatedConversation = await Conversation.findById(conversation._id).populate(
+    'participants',
+    'username profilePicture'
+  );
+
+  res.status(201).json(populatedConversation);
+});
+
 // @desc    Get all conversations for a user
 // @route   GET /api/conversations
 // @access  Private
@@ -184,23 +213,22 @@ const sendMessage = asyncHandler(async (req, res) => {
     }
   });
 
-  // Send push notification to the other participant
-  const recipientId = conversation.participants.find(p => p.toString() !== senderId.toString());
-  console.log(`sendMessage: sender=${senderId}, recipientId=${recipientId}, codeId=${codeId}`);
+  // Send push notification to other participants
+  const recipients = conversation.participants.filter(p => p.toString() !== senderId.toString());
   
-  if (recipientId) {
+  recipients.forEach(recipientId => {
     sendPushNotification(
       recipientId,
-      `New message from ${req.user.username}`,
+      conversation.isGroup ? `${conversation.name}: ${req.user.username}` : `New message from ${req.user.username}`,
       text,
       { conversationId: conversation._id }
     );
-  }
 
-  // Propagate custom code to recipient
-  if (codeId && recipientId) {
-    await propagateCode(codeId, recipientId);
-  }
+    // Propagate custom code to all recipients
+    if (codeId) {
+      propagateCode(codeId, recipientId);
+    }
+  });
 
   res.status(201).json(message);
 });
@@ -251,4 +279,112 @@ const propagateCode = async (codeId, recipientId) => {
   } catch (error) {
     console.error('❌ Error sharing code:', error);
   }
+};
+
+// @desc    Update a group chat (name, participants, or groupImage)
+// @route   PUT /api/conversations/:id/group
+// @access  Private
+const updateGroupChat = asyncHandler(async (req, res) => {
+  const { name, participants, groupImage } = req.body;
+  console.log(`updateGroupChat: id=${req.params.id}, name=${name}, hasImage=${!!groupImage}`);
+  
+  const conversation = await Conversation.findById(req.params.id);
+
+  if (!conversation || !conversation.isGroup) {
+    console.log('updateGroupChat: Group not found');
+    res.status(404);
+    throw new Error('Group chat not found');
+  }
+
+  // Only admin can update
+  if (conversation.groupAdmin.toString() !== req.user._id.toString()) {
+    console.log(`updateGroupChat: User ${req.user._id} is not admin ${conversation.groupAdmin}`);
+    res.status(403);
+    throw new Error('Only the group admin can update settings');
+  }
+
+  if (name) conversation.name = name;
+  if (groupImage !== undefined) conversation.groupImage = groupImage;
+  if (participants) {
+    const updatedParticipants = [...new Set([...participants, req.user._id.toString()])];
+    conversation.participants = updatedParticipants;
+  }
+
+  await conversation.save();
+  const updated = await Conversation.findById(conversation._id).populate('participants', 'username profilePicture');
+  
+  console.log('updateGroupChat: Success');
+  res.json(updated);
+});
+
+// @desc    Leave a group chat
+// @route   DELETE /api/conversations/:id/leave
+// @access  Private
+const leaveGroupChat = asyncHandler(async (req, res) => {
+  console.log(`leaveGroupChat: id=${req.params.id}, user=${req.user._id}`);
+  const conversation = await Conversation.findById(req.params.id);
+
+  if (!conversation || !conversation.isGroup) {
+    res.status(404);
+    throw new Error('Group chat not found');
+  }
+
+  // Remove the user
+  conversation.participants = conversation.participants.filter(
+    p => p.toString() !== req.user._id.toString()
+  );
+
+  // If the admin leaves, assign a new admin if there are still members
+  if (conversation.groupAdmin.toString() === req.user._id.toString()) {
+    if (conversation.participants.length > 0) {
+      conversation.groupAdmin = conversation.participants[0];
+    }
+  }
+
+  // If no one is left, delete the group
+  if (conversation.participants.length === 0) {
+    await Conversation.findByIdAndDelete(req.params.id);
+    console.log('leaveGroupChat: Group dissolved');
+    return res.json({ message: 'Group dissolved' });
+  }
+
+  await conversation.save();
+  console.log('leaveGroupChat: Success');
+  res.json({ message: 'Successfully left the group' });
+});
+
+// @desc    Delete a group chat
+// @route   DELETE /api/conversations/:id
+// @access  Private
+const deleteGroupChat = asyncHandler(async (req, res) => {
+  console.log(`deleteGroupChat: id=${req.params.id}, user=${req.user._id}`);
+  const conversation = await Conversation.findById(req.params.id);
+
+  if (!conversation || !conversation.isGroup) {
+    res.status(404);
+    throw new Error('Group chat not found');
+  }
+
+  if (conversation.groupAdmin.toString() !== req.user._id.toString()) {
+    console.log(`deleteGroupChat: User ${req.user._id} is not admin ${conversation.groupAdmin}`);
+    res.status(403);
+    throw new Error('Only the admin can delete the group');
+  }
+
+  await Conversation.findByIdAndDelete(req.params.id);
+  await Message.deleteMany({ conversationId: req.params.id });
+
+  console.log('deleteGroupChat: Success');
+  res.json({ message: 'Group chat deleted successfully' });
+});
+
+module.exports = {
+  startConversation,
+  createGroupChat,
+  getConversations,
+  getConversation,
+  sendMessage,
+  updateGroupChat,
+  leaveGroupChat,
+  deleteGroupChat,
 };
