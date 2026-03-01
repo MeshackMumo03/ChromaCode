@@ -59,7 +59,7 @@ export default function HomeScreen() {
 
   const handleAddFriend = async (friendId: string, friendUsername: string) => {
     try {
-      const response = await fetch(`${BASE_URL}/users/add-friend`, {
+      const response = await fetch(`${BASE_URL}/users/friend-request`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -69,9 +69,9 @@ export default function HomeScreen() {
       });
       const data = await response.json();
       if (response.ok) {
-        Alert.alert('Success', `${friendUsername} added as a friend!`);
+        Alert.alert('Success', `Friend request sent to ${friendUsername}!`);
       } else {
-        Alert.alert('Error', data.message || `Failed to add ${friendUsername} as a friend.`);
+        Alert.alert('Error', data.message || `Failed to send request to ${friendUsername}.`);
       }
     } catch (error) {
       console.error('Network error during adding friend:', error);
