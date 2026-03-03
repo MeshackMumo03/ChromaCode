@@ -5,6 +5,8 @@ const protect = require('../middleware/authMiddleware'); // Import protect funct
 
 router.route('/register').post(userController.registerUser);
 router.post('/login', userController.loginUser);
+router.post('/verify-email', userController.verifyEmail);
+router.post('/google-login', userController.googleLogin);
 
 router.get('/search', protect, userController.searchUsers);
 router.get('/friend-requests', protect, userController.getFriendRequests);

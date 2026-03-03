@@ -7,11 +7,13 @@ interface AuthContextType {
   user: any; // Ideally, define a User interface
   token: string | null;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (username: string, email: string, password: string) => Promise<boolean>;
+  register: (username: string, email: string, password: string) => Promise<{ success: boolean; needsVerification?: boolean; email?: string }>;
+  verifyEmail: (email: string, code: string) => Promise<boolean>;
+  googleLogin: (userInfo: any) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
-  updateUser: (newUser: any) => void; // Add this
-  fetchUser: () => Promise<void>; // Add this
+  updateUser: (newUser: any) => void;
+  fetchUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,7 +28,9 @@ export function useAuth() {
       user: null,
       token: null,
       login: async () => false,
-      register: async () => false,
+      register: async () => ({ success: false }),
+      verifyEmail: async () => false,
+      googleLogin: async () => false,
       logout: () => {},
       isLoading: false,
       updateUser: () => {},
@@ -36,7 +40,7 @@ export function useAuth() {
   return context;
 }
 
-export function AuthProvider({ children }: { ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,9 +52,6 @@ export function AuthProvider({ children }: { ReactNode }) {
         const storedToken = await SecureStore.getItemAsync('userToken');
         if (storedToken) {
           setToken(storedToken);
-          // In a real app, you'd verify the token with the backend or decode it
-          // to get user info. For now, we'll just assume token validity.
-          // You might also fetch user profile here.
         }
       } catch (error) {
         console.error('Failed to load auth from SecureStore', error);
@@ -72,16 +73,7 @@ export function AuthProvider({ children }: { ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
 
-      // Try to parse JSON, fall back to text for diagnostics
-      let data: any;
-      const contentType = response.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
-        data = await response.json();
-      } else {
-        const text = await response.text();
-        console.error('Non-JSON response during login:', text);
-        return false;
-      }
+      const data = await response.json();
 
       if (response.ok) {
         setToken(data.token);
@@ -94,10 +86,12 @@ export function AuthProvider({ children }: { ReactNode }) {
           pushToken: data.pushToken
         });
         await SecureStore.setItemAsync('userToken', data.token);
-        // Slight delay to ensure navigation state is ready
         setTimeout(() => router.replace('/(tabs)'), 100);
         return true;
       } else {
+        if (response.status === 401 && data.message.includes('verify')) {
+          router.push({ pathname: '/verify-email', params: { email } });
+        }
         console.error('Login failed:', data.message || data.error || data);
         return false;
       }
@@ -109,7 +103,7 @@ export function AuthProvider({ children }: { ReactNode }) {
     }
   };
 
-  const register = async (username: string, email: string, password: string): Promise<boolean> => {
+  const register = async (username: string, email: string, password: string): Promise<{ success: boolean; needsVerification?: boolean; email?: string }> => {
     try {
       setIsLoading(true);
       const response = await fetch(`${BASE_URL}/users/register`, {
@@ -120,37 +114,69 @@ export function AuthProvider({ children }: { ReactNode }) {
         body: JSON.stringify({ username, email, password }),
       });
 
-      // Try to parse JSON, fall back to text for diagnostics
-      let data: any;
-      const contentType = response.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
-        data = await response.json();
-      } else {
-        const text = await response.text();
-        console.error('Non-JSON response during registration:', text);
-        return false;
-      }
+      const data = await response.json();
 
-      if (response.ok) {
-        setToken(data.token);
-        setUser({
-          _id: data._id,
-          username: data.username,
-          email: data.email,
-          profilePicture: data.profilePicture,
-          friends: data.friends,
-          pushToken: data.pushToken
-        });
-        await SecureStore.setItemAsync('userToken', data.token);
-        // Slight delay to ensure navigation state is ready
-        setTimeout(() => router.replace('/(tabs)'), 100);
-        return true;
+      if (response.status === 201) {
+        return { success: true, needsVerification: true, email };
       } else {
         console.error('Registration failed:', data.message || data.error || data);
-        return false;
+        return { success: false };
       }
     } catch (error) {
       console.error('Network error during registration:', error);
+      return { success: false };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const verifyEmail = async (email: string, code: string): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`${BASE_URL}/users/verify-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setToken(data.token);
+        setUser(data);
+        await SecureStore.setItemAsync('userToken', data.token);
+        setTimeout(() => router.replace('/(tabs)'), 100);
+        return true;
+      } else {
+        return false;
+      }
+    } catch (error) {
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const googleLogin = async (userInfo: any): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`${BASE_URL}/users/google-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userInfo),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setToken(data.token);
+        setUser(data);
+        await SecureStore.setItemAsync('userToken', data.token);
+        setTimeout(() => router.replace('/(tabs)'), 100);
+        return true;
+      }
+      return false;
+    } catch (error) {
       return false;
     } finally {
       setIsLoading(false);

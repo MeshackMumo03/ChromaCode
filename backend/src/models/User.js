@@ -48,6 +48,17 @@ const UserSchema = mongoose.Schema(
       type: String,
       default: '',
     },
+    isVerified: {
+      type: Boolean,
+      default: true, // Default to true for existing users
+    },
+    verificationCode: {
+      type: String,
+    },
+    isGoogleUser: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
