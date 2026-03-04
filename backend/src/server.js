@@ -107,6 +107,10 @@ app.post('/api/test', (req, res) => {
 
 
 // Routes
+app.get('/', (req, res) => {
+    res.send('Welcome to the ChromaCode API Server! 🚀');
+});
+
 // Log headers and body for register requests to aid debugging (placed before userRoutes)
 app.use('/api/users/register', (req, res, next) => { // Uncommented
     console.log('--- /api/users/register incoming ---');

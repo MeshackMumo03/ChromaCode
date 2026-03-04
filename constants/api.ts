@@ -17,5 +17,5 @@ export const getBaseUrl = (): string => {
   }
 
   // 3. Fallback for web or if no other URL is found
-  return `https://balconied-christie-instantaneous.ngrok-free.dev/api`;
+  return `https://chromacode.onrender.com/api`;
 };

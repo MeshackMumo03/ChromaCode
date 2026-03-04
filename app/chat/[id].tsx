@@ -8,7 +8,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { Colors } from '@/constants/theme';
 import { getBaseUrl } from '@/constants/api';
 import { StyledButton } from '@/components/StyledButton';
-import { io, Socket } from 'socket.io-client';
 import * as Haptics from 'expo-haptics';
 import { Audio } from 'expo-av';
 import { useSocket } from '@/hooks/useSocket';
