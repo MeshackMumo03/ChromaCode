@@ -145,26 +145,8 @@ app.get('/api/health', (req, res) => {
 });
 
 // Start server
-http.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
-    console.log(`📝 API endpoints:`);
-    console.log(`   GET    http://localhost:${PORT}/api/health`);
-    console.log(`   GET    http://localhost:${PORT}/api/history`);
-    console.log(`   POST   http://localhost:${PORT}/api/history`);
-    console.log(`   DELETE http://localhost:${PORT}/api/history/:id`);
-    console.log(`   POST   http://localhost:${PORT}/api/users/register`);
-    console.log(`   POST   http://localhost:${PORT}/api/users/login`);
-    console.log(`   GET    http://localhost:${PORT}/api/users/search`);
-    console.log(`   POST   http://localhost:${PORT}/api/users/add-friend`);
-    console.log(`   GET    http://localhost:${PORT}/api/users/friends`);
-    console.log(`   GET    http://localhost:${PORT}/api/users/profile`);
-    console.log(`   PUT    http://localhost:${PORT}/api/users/profile`);
-    console.log(`   DELETE http://localhost:${PORT}/api/users/profile`);
-    console.log(`   GET    http://localhost:${PORT}/api/codes`);
-    console.log(`   POST   http://localhost:${PORT}/api/codes`);
-    console.log(`   PUT    http://localhost:${PORT}/api/codes/:id`);
-    console.log(`   DELETE http://localhost:${PORT}/api/codes/:id`);
-    console.log(`   POST   http://localhost:${PORT}/api/test`);
+http.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server running on port ${PORT}`);
 });
 
 // Generic Error Handler (must be last middleware)
