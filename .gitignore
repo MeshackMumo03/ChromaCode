@@ -36,7 +36,6 @@ yarn-error.*
 backend/.env
 
 # Firebase / Google Keys
-google-services.json
 service-account-key.json
 *.json.key
 
