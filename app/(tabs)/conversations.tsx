@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { StyleSheet, FlatList, TouchableOpacity, Alert, View, Image, RefreshControl } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { StyleSheet, FlatList, TouchableOpacity, View, Image, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
@@ -7,70 +7,17 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from 'react-native';
-import { getBaseUrl } from '@/constants/api';
-import { useSocket } from '@/hooks/useSocket';
+import { useConversations, Conversation } from '@/hooks/useConversations';
 import { Ionicons } from '@expo/vector-icons';
 
-const BASE_URL = getBaseUrl();
-
-interface Conversation {
-  _id: string;
-  participants: {
-    _id: string;
-    username: string;
-    profilePicture?: string;
-  }[];
-  lastMessage: {
-    text: string;
-    timestamp: string;
-    sender: any;
-  };
-  updatedAt: string;
-  isGroup?: boolean;
-  name?: string;
-  groupImage?: string;
-}
-
 export default function ConversationsScreen() {
-  const { token, user } = useAuth();
-  const socket = useSocket();
+  const { user } = useAuth();
+  const { conversations, fetchConversations, isLoading } = useConversations();
   const router = useRouter();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [typingConversations, setTypingConversations] = useState<Record<string, string | null>>({});
-  const [onlineUsers, setOnlineUsers] = useState<Record<string, boolean>>({});
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
-  const fetchConversations = useCallback(async () => {
-    if (!token) return;
-    try {
-      const response = await fetch(`${BASE_URL}/conversations`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      const data = await response.json();
-      if (response.ok) {
-        // Robust sort by last message timestamp or updatedAt
-        const sortedData = data.sort((a: Conversation, b: Conversation) => {
-          const getTime = (conv: Conversation) => {
-            if (conv.lastMessage?.timestamp) return new Date(conv.lastMessage.timestamp).getTime();
-            if (conv.updatedAt) return new Date(conv.updatedAt).getTime();
-            return 0;
-          };
-          return getTime(b) - getTime(a);
-        });
-        setConversations(sortedData);
-      } else {
-        console.error('Failed to fetch conversations:', data.message);
-      }
-    } catch (error) {
-      console.error('Error fetching conversations:', error);
-    }
-  }, [token]);
-
-  // Refresh when tab comes into focus
   useFocusEffect(
     useCallback(() => {
       fetchConversations();
@@ -82,62 +29,6 @@ export default function ConversationsScreen() {
     await fetchConversations();
     setRefreshing(false);
   }, [fetchConversations]);
-
-  useEffect(() => {
-    if (socket) {
-      const handleNewMessage = (data: any) => {
-        const newMessageData = {
-          ...data.message,
-          timestamp: data.message.timestamp || new Date().toISOString()
-        };
-
-        setConversations(prev => {
-          const updated = [...prev];
-          const index = updated.findIndex(c => c._id === data.conversationId);
-          
-          if (index !== -1) {
-            // Update existing conversation
-            updated[index] = {
-              ...updated[index],
-              lastMessage: newMessageData,
-              updatedAt: newMessageData.timestamp
-            };
-            // Move to top
-            const item = updated.splice(index, 1)[0];
-            return [item, ...updated];
-          } else {
-            // New conversation arrived, trigger a full fetch to get participants etc.
-            fetchConversations();
-            return prev;
-          }
-        });
-      };
-
-      const handleTyping = (data: any) => {
-        setTypingConversations(prev => ({ ...prev, [data.conversationId]: data.senderName }));
-      };
-
-      const handleStopTyping = (data: any) => {
-        setTypingConversations(prev => ({ ...prev, [data.conversationId]: null }));
-      };
-
-      const handleStatusChange = (data: { userId: string, status: string }) => {
-        setOnlineUsers(prev => ({ ...prev, [data.userId]: data.status === 'online' }));
-      };
-
-      socket.on('new_message', handleNewMessage);
-      socket.on('typing', handleTyping);
-      socket.on('stop_typing', handleStopTyping);
-      socket.on('user_status_change', handleStatusChange);
-
-      return () => {
-        socket.off('new_message', handleNewMessage);
-        socket.off('typing', handleTyping);
-        socket.off('stop_typing', handleStopTyping);
-        socket.off('user_status_change', handleStatusChange);
-      };
-    }
-  }, [socket, fetchConversations]);
 
   const getConversationTitle = (conversation: Conversation) => {
     if (conversation.isGroup) return conversation.name;
@@ -186,17 +77,14 @@ export default function ConversationsScreen() {
           keyExtractor={(item) => item._id}
           refreshControl={
             <RefreshControl 
-              refreshing={refreshing} 
+              refreshing={refreshing || isLoading} 
               onRefresh={onRefresh} 
               colors={[colors.tint]} 
               tintColor={colors.tint}
             />
           }
           renderItem={({ item }) => {
-            const typingName = typingConversations[item._id];
-            const otherParticipant = !item.isGroup ? item.participants.find(p => p._id !== user?._id) : null;
-            const isOnline = otherParticipant ? onlineUsers[otherParticipant._id] : false;
-
+            const hasUnread = (item.unreadCount || 0) > 0;
             return (
               <TouchableOpacity
                 style={[styles.conversationItem, { borderBottomColor: colors.icon + '33' }]}
@@ -207,27 +95,34 @@ export default function ConversationsScreen() {
                     source={{ uri: getConversationAvatar(item) }} 
                     style={styles.avatar} 
                   />
-                  {isOnline && <View style={[styles.onlineDot, { backgroundColor: '#4CAF50' }]} />}
                 </View>
                 <View style={styles.content}>
                   <View style={styles.headerRow}>
                     <ThemedText style={[styles.username, { color: colors.text }]} numberOfLines={1}>
                       {getConversationTitle(item)}
                     </ThemedText>
-                    <ThemedText style={[styles.time, { color: typingName ? '#4CAF50' : colors.icon }]}>
-                      {typingName ? 'typing...' : formatTime(item.lastMessage?.timestamp || item.updatedAt)}
+                    <ThemedText style={[styles.time, { color: hasUnread ? colors.tint : colors.icon, fontWeight: hasUnread ? 'bold' : 'normal' }]}>
+                      {formatTime(item.lastMessage?.timestamp || item.updatedAt)}
                     </ThemedText>
                   </View>
                   <ThemedText 
                     style={[
                       styles.lastMessage, 
-                      { color: typingName ? '#4CAF50' : colors.icon, fontWeight: typingName ? 'bold' : 'normal' }
+                      { 
+                        color: hasUnread ? colors.text : colors.icon, 
+                        fontWeight: hasUnread ? 'bold' : 'normal' 
+                      }
                     ]} 
                     numberOfLines={1}
                   >
-                    {typingName ? `${typingName} is typing...` : (item.lastMessage?.text || 'No messages yet')}
+                    {item.lastMessage?.text || 'No messages yet'}
                   </ThemedText>
                 </View>
+                {hasUnread && (
+                  <View style={[styles.unreadBadge, { backgroundColor: colors.tint }]}>
+                    <ThemedText style={styles.unreadText}>{item.unreadCount}</ThemedText>
+                  </View>
+                )}
               </TouchableOpacity>
             );
           }}
@@ -278,16 +173,6 @@ const styles = StyleSheet.create({
     marginRight: 15,
     backgroundColor: '#eee',
   },
-  onlineDot: {
-    position: 'absolute',
-    bottom: 2,
-    right: 15,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
   content: {
     flex: 1,
     justifyContent: 'center',
@@ -309,5 +194,19 @@ const styles = StyleSheet.create({
   },
   lastMessage: {
     fontSize: 14,
+  },
+  unreadBadge: {
+    minWidth: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    marginLeft: 10,
+  },
+  unreadText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });

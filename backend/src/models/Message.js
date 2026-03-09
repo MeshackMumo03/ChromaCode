@@ -19,6 +19,23 @@ const MessageSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Code',
   },
+  mediaType: {
+    type: String,
+    enum: ['none', 'image', 'voice'],
+    default: 'none',
+  },
+  mediaUrl: {
+    type: String,
+  },
+  readBy: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  }],
+  status: {
+    type: String,
+    enum: ['sent', 'delivered', 'read'],
+    default: 'sent',
+  },
   timestamp: {
     type: Date,
     default: Date.now,

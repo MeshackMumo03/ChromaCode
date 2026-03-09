@@ -11,12 +11,12 @@ const { sendPushNotification } = require('../utils/notifications');
 // @route   POST /api/conversations
 // @access  Private
 const startConversation = asyncHandler(async (req, res) => {
-  const { recipientId, text, codeId } = req.body;
+  const { recipientId, text, codeId, mediaType, mediaUrl } = req.body;
   const senderId = req.user._id;
 
-  if (!recipientId || !text) {
+  if (!recipientId || (!text && !mediaUrl)) {
     res.status(400);
-    throw new Error('Recipient and text are required');
+    throw new Error('Recipient and message content are required');
   }
 
   const recipient = await User.findById(recipientId);
@@ -40,8 +40,11 @@ const startConversation = asyncHandler(async (req, res) => {
   const message = await Message.create({
     conversationId: conversation._id,
     sender: senderId,
-    text,
+    text: text || '',
     codeId: validCodeId,
+    mediaType: mediaType || 'none',
+    mediaUrl: mediaUrl || '',
+    readBy: [senderId],
   });
 
   // Ensure the message is fully populated before emitting
@@ -59,13 +62,16 @@ const startConversation = asyncHandler(async (req, res) => {
   const io = req.app.get('io');
   const connectedUsers = req.app.get('connectedUsers');
   
+  // Emit to all participants except the sender (who already got the response via REST)
   conversation.participants.forEach(participantId => {
-    const socketId = connectedUsers.get(participantId.toString());
-    if (socketId) {
-      io.to(socketId).emit('new_message', {
-        conversationId: conversation._id,
-        message: message
-      });
+    if (participantId.toString() !== senderId.toString()) {
+      const socketId = connectedUsers.get(participantId.toString());
+      if (socketId) {
+        io.to(socketId).emit('new_message', {
+          conversationId: conversation._id,
+          message: message
+        });
+      }
     }
   });
 
@@ -121,7 +127,8 @@ const createGroupChat = asyncHandler(async (req, res) => {
 // @route   GET /api/conversations
 // @access  Private
 const getConversations = asyncHandler(async (req, res) => {
-  const conversations = await Conversation.find({ participants: req.user._id })
+  const userId = req.user._id;
+  const conversations = await Conversation.find({ participants: userId })
     .populate('participants', 'username profilePicture')
     .populate({
       path: 'lastMessage',
@@ -129,13 +136,30 @@ const getConversations = asyncHandler(async (req, res) => {
     })
     .sort({ updatedAt: -1 });
 
-  res.json(conversations);
+  // Add unread count for each conversation
+  const conversationsWithUnread = await Promise.all(conversations.map(async (conv) => {
+    const unreadCount = await Message.countDocuments({
+      conversationId: conv._id,
+      readBy: { $ne: userId }
+    });
+    
+    // Convert Mongoose doc to plain object to add virtual field
+    const convObj = conv.toObject();
+    convObj.unreadCount = unreadCount;
+    return convObj;
+  }));
+
+  res.json(conversationsWithUnread);
 });
 
-// @desc    Get a single conversation with all its messages
-// @route   GET /api/conversations/:id
+// @desc    Get a single conversation with paginated messages
+// @route   GET /api/conversations/:id?page=1&limit=50
 // @access  Private
 const getConversation = asyncHandler(async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 50;
+  const skip = (page - 1) * limit;
+
   const conversation = await Conversation.findById(req.params.id).populate(
     'participants',
     'username profilePicture'
@@ -151,25 +175,33 @@ const getConversation = asyncHandler(async (req, res) => {
 
   const messages = await Message.find({ conversationId: req.params.id })
     .populate('sender', 'username profilePicture')
-    .populate('codeId');
+    .populate('codeId')
+    .sort({ createdAt: -1 }) // Get newest first for pagination
+    .skip(skip)
+    .limit(limit);
 
-  res.json({ conversation, messages });
+  // Return messages in chronological order for the frontend
+  res.json({ 
+    conversation, 
+    messages: messages.reverse(),
+    hasMore: messages.length === limit
+  });
 });
 
 // @desc    Send a message in a conversation
 // @route   POST /api/conversations/:id/messages
 // // @access  Private
 const sendMessage = asyncHandler(async (req, res) => {
-  const { text, codeId } = req.body;
+  const { text, codeId, mediaType, mediaUrl } = req.body;
   const senderId = req.user._id;
   const conversationId = req.params.id;
 
-  if (!text) {
+  if (!text && !mediaUrl) {
     res.status(400);
-    throw new Error('Message text is required');
+    throw new Error('Message content is required');
   }
 
-  const conversation = await Conversation.findById(conversationId);
+  const conversation = await Conversation.findById(conversationId).populate('participants', 'blockedUsers');
 
   if (
     !conversation ||
@@ -179,13 +211,26 @@ const sendMessage = asyncHandler(async (req, res) => {
     throw new Error('Conversation not found');
   }
 
+  // Check if any other participant has blocked the sender
+  const isBlocked = conversation.participants.some(p => 
+    p.blockedUsers && p.blockedUsers.includes(senderId)
+  );
+
+  if (isBlocked) {
+    res.status(403);
+    throw new Error('You cannot send messages to this conversation because you are blocked.');
+  }
+
   const validCodeId = codeId && mongoose.Types.ObjectId.isValid(codeId) ? codeId : null;
 
   const message = await Message.create({
     conversationId,
     sender: senderId,
-    text,
+    text: text || '',
     codeId: validCodeId,
+    mediaType: mediaType || 'none',
+    mediaUrl: mediaUrl || '',
+    readBy: [senderId],
   });
 
   // Populate the sender and codeId fields before sending the message in the response
@@ -203,13 +248,16 @@ const sendMessage = asyncHandler(async (req, res) => {
   const io = req.app.get('io');
   const connectedUsers = req.app.get('connectedUsers');
 
+  // Emit to all participants except the sender (who already got the response via REST)
   conversation.participants.forEach(participantId => {
-    const socketId = connectedUsers.get(participantId.toString());
-    if (socketId) {
-      io.to(socketId).emit('new_message', {
-        conversationId: conversation._id,
-        message: message
-      });
+    if (participantId.toString() !== senderId.toString()) {
+      const socketId = connectedUsers.get(participantId.toString());
+      if (socketId) {
+        io.to(socketId).emit('new_message', {
+          conversationId: conversation._id,
+          message: message
+        });
+      }
     }
   });
 
@@ -378,6 +426,36 @@ const deleteGroupChat = asyncHandler(async (req, res) => {
   res.json({ message: 'Group chat deleted successfully' });
 });
 
+// @desc    Mark all messages in a conversation as read
+// @route   PUT /api/conversations/:id/read
+// @access  Private
+const markMessagesAsRead = asyncHandler(async (req, res) => {
+  const conversationId = req.params.id;
+  const userId = req.user._id;
+
+  await Message.updateMany(
+    { conversationId, readBy: { $ne: userId } },
+    { 
+      $addToSet: { readBy: userId },
+      status: 'read' 
+    }
+  );
+
+  // Emit socket event for real-time status update
+  const io = req.app.get('io');
+  const conversation = await Conversation.findById(conversationId);
+  const connectedUsers = req.app.get('connectedUsers');
+
+  conversation.participants.forEach(participantId => {
+    const socketId = connectedUsers.get(participantId.toString());
+    if (socketId) {
+      io.to(socketId).emit('messages_read', { conversationId, readerId: userId });
+    }
+  });
+
+  res.json({ message: 'Messages marked as read' });
+});
+
 module.exports = {
   startConversation,
   createGroupChat,
@@ -387,4 +465,5 @@ module.exports = {
   updateGroupChat,
   leaveGroupChat,
   deleteGroupChat,
+  markMessagesAsRead,
 };

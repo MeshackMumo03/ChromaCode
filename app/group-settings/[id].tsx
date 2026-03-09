@@ -113,10 +113,13 @@ export default function GroupSettingsScreen() {
       type: 'image/jpeg',
       name: 'group.jpg',
     } as any);
-    formData.append('upload_preset', 'chromacode'); 
+
+    const cloudName = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME || 'demo';
+    const uploadPreset = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'chromacode';
+    formData.append('upload_preset', uploadPreset); 
 
     try {
-      const response = await fetch('https://api.cloudinary.com/v1_1/demo/image/upload', {
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
         method: 'POST',
         body: formData,
       });
@@ -124,6 +127,9 @@ export default function GroupSettingsScreen() {
       if (data.secure_url) {
         setGroupImage(data.secure_url);
         handleUpdateGroup(data.secure_url);
+      } else {
+        console.error('Cloudinary response error:', data);
+        Alert.alert('Upload Failed', data.error?.message || 'Could not upload image.');
       }
     } catch (error) {
       console.error('Cloudinary upload error:', error);

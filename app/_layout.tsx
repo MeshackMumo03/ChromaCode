@@ -12,6 +12,7 @@ import { SettingsProvider } from '@/hooks/useSettings';
 import { CodesProvider } from '@/hooks/useCodes'; 
 import { useNotifications } from '@/hooks/useNotifications';
 import { SocketProvider } from '@/hooks/useSocket';
+import { ConversationsProvider } from '@/hooks/useConversations';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -36,14 +37,16 @@ function RootLayoutNav() {
 
   return (
     <SocketProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="chat" options={{ headerShown: false }} />
-        </Stack>
-        <StatusBar style="auto" />
-      </ThemeProvider>
+      <ConversationsProvider>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <Stack>
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="chat" options={{ headerShown: false }} />
+          </Stack>
+          <StatusBar style="auto" />
+        </ThemeProvider>
+      </ConversationsProvider>
     </SocketProvider>
   );
 }

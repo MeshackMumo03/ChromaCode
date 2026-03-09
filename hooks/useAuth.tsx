@@ -3,8 +3,18 @@ import * as SecureStore from 'expo-secure-store'; // For storing JWT securely
 import { useRouter } from 'expo-router'; // Import useRouter
 import { getBaseUrl } from '@/constants/api'; // Import getBaseUrl from centralized file
 
+export interface User {
+  _id: string;
+  username: string;
+  email: string;
+  profilePicture: string;
+  friends: string[];
+  pushToken?: string;
+  blockedUsers?: string[];
+}
+
 interface AuthContextType {
-  user: any; // Ideally, define a User interface
+  user: User | null;
   token: string | null;
   login: (email: string, password: string) => Promise<boolean>;
   register: (username: string, email: string, password: string) => Promise<{ success: boolean; needsVerification?: boolean; email?: string }>;
@@ -174,9 +184,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await SecureStore.setItemAsync('userToken', data.token);
         setTimeout(() => router.replace('/(tabs)'), 100);
         return true;
+      } else if (data.needsVerification) {
+        // Redirect to verify email screen if backend requires it
+        router.push({ pathname: '/verify-email', params: { email: data.email } });
+        return false;
       }
       return false;
     } catch (error) {
+      console.error('Network error during Google login:', error);
       return false;
     } finally {
       setIsLoading(false);

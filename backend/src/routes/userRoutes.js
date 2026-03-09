@@ -16,6 +16,9 @@ router.post('/friend-request/accept', protect, userController.acceptFriendReques
 router.post('/friend-request/decline', protect, userController.declineFriendRequest);
 router.put('/push-token', protect, userController.updatePushToken);
 
+router.post('/block', protect, userController.blockUser);
+router.post('/unblock', protect, userController.unblockUser);
+
 router.get('/', protect, userController.getUsers);
 router
   .route('/profile')

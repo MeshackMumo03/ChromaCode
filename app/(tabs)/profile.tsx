@@ -5,20 +5,22 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'expo-router';
+import { useRouter, useNavigation } from 'expo-router';
 import { StyledButton } from '@/components/StyledButton'; // Import StyledButton
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from 'react-native';
 import { getBaseUrl } from '@/constants/api'; // Import getBaseUrl
 
 import * as ImagePicker from 'expo-image-picker';
-import { RefreshControl, Pressable } from 'react-native';
+import { RefreshControl, Pressable, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 const BASE_URL = getBaseUrl(); // Backend API URL
 
 export default function ProfileScreen() {
   const { user, token, logout, updateUser } = useAuth();
   const router = useRouter();
+  const navigation = useNavigation();
   const [username, setUsername] = useState(user?.username || '');
   const [email, setEmail] = useState(user?.email || '');
   const [profilePicture, setProfilePicture] = useState(user?.profilePicture || '');
@@ -26,6 +28,21 @@ export default function ProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerTitle: 'Profile',
+      headerShown: true,
+      headerRight: () => (
+        <TouchableOpacity 
+          onPress={() => router.push('/settings')}
+          style={{ marginRight: 15 }}
+        >
+          <Ionicons name="settings-outline" size={24} color={colors.text} />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, colors.text]);
 
   useEffect(() => {
     if (user) {
@@ -110,12 +127,13 @@ export default function ProfileScreen() {
       type: 'image/jpeg',
       name: 'avatar.jpg',
     } as any);
-    formData.append('upload_preset', 'chromacode'); // You would normally use your preset here
+
+    const cloudName = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME || 'demo';
+    const uploadPreset = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'chromacode';
+    formData.append('upload_preset', uploadPreset); 
 
     try {
-      // Note: Using a public unsigned upload for demo purposes. 
-      // In production, you'd use a signed upload or a backend proxy.
-      const response = await fetch('https://api.cloudinary.com/v1_1/demo/image/upload', {
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
         method: 'POST',
         body: formData,
       });
@@ -123,6 +141,9 @@ export default function ProfileScreen() {
       if (data.secure_url) {
         setProfilePicture(data.secure_url);
         handleUpdateProfile(data.secure_url);
+      } else {
+        console.error('Cloudinary response error:', data);
+        Alert.alert('Upload Failed', data.error?.message || 'Could not upload image.');
       }
     } catch (error) {
       console.error('Cloudinary upload error:', error);

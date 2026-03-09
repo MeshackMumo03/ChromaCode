@@ -48,6 +48,10 @@ const UserSchema = mongoose.Schema(
       type: String,
       default: '',
     },
+    blockedUsers: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    }],
     isVerified: {
       type: Boolean,
       default: true, // Default to true for existing users

@@ -129,22 +129,50 @@ const googleLogin = asyncHandler(async (req, res) => {
   let user = await User.findOne({ email });
 
   if (user) {
-    // Existing user - ensure they are verified and marked as Google user
+    // Existing user - if not verified, resend code and require verification
+    if (!user.isVerified) {
+      const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+      user.verificationCode = newCode;
+      user.isGoogleUser = true; // Mark as Google user if they logged in with Google
+      await user.save();
+      sendVerificationEmail(email, newCode);
+      
+      res.status(401).json({
+        message: 'Please verify your email. A verification code has been sent.',
+        needsVerification: true,
+        email: user.email
+      });
+      return;
+    }
+    
+    // Ensure marked as Google user if they aren't already
     if (!user.isGoogleUser) {
       user.isGoogleUser = true;
-      user.isVerified = true;
       await user.save();
     }
   } else {
-    // Create new Google user
+    // Create new Google user (unverified by default now as per request)
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    
     user = await User.create({
       username,
       email,
       password: await bcrypt.hash(Math.random().toString(36), 10), // Random password
       profilePicture: profilePicture || 'https://www.gravatar.com/avatar/?d=mp',
-      isVerified: true, // Google users are implicitly verified
+      isVerified: false, 
+      verificationCode,
       isGoogleUser: true,
     });
+
+    // Send verification email
+    sendVerificationEmail(email, verificationCode);
+
+    res.status(201).json({
+      message: 'Verification code sent to your email',
+      needsVerification: true,
+      email: user.email
+    });
+    return;
   }
 
   res.json({
@@ -416,6 +444,39 @@ const generateToken = (id) => {
     });
 };
 
+// @desc    Block a user
+// @route   POST /api/users/block
+// @access  Private
+const blockUser = asyncHandler(async (req, res) => {
+  const { userIdToBlock } = req.body;
+  const user = await User.findById(req.user._id);
+
+  if (user.blockedUsers.includes(userIdToBlock)) {
+    res.status(400);
+    throw new Error('User already blocked');
+  }
+
+  user.blockedUsers.push(userIdToBlock);
+  await user.save();
+
+  res.json({ message: 'User blocked successfully' });
+});
+
+// @desc    Unblock a user
+// @route   POST /api/users/unblock
+// @access  Private
+const unblockUser = asyncHandler(async (req, res) => {
+  const { userIdToUnblock } = req.body;
+  const user = await User.findById(req.user._id);
+
+  user.blockedUsers = user.blockedUsers.filter(
+    id => id.toString() !== userIdToUnblock
+  );
+  await user.save();
+
+  res.json({ message: 'User unblocked successfully' });
+});
+
 module.exports = {
     registerUser,
     loginUser,
@@ -432,4 +493,6 @@ module.exports = {
     getFriendRequests,
     getFriends,
     updatePushToken,
+    blockUser,
+    unblockUser,
 };

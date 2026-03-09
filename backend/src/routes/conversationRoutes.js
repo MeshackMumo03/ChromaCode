@@ -8,7 +8,8 @@ const {
   sendMessage,
   updateGroupChat,
   leaveGroupChat,
-  deleteGroupChat
+  deleteGroupChat,
+  markMessagesAsRead
 } = require('../controllers/conversationController');
 
 router.route('/')
@@ -18,6 +19,7 @@ router.route('/')
 router.post('/group', createGroupChat);
 
 router.get('/:id', getConversation);
+router.put('/:id/read', markMessagesAsRead);
 router.put('/:id/group', updateGroupChat);
 router.delete('/:id/leave', leaveGroupChat);
 router.delete('/:id', deleteGroupChat);

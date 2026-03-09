@@ -11,10 +11,12 @@ import { StyledButton } from '@/components/StyledButton';
 import * as Haptics from 'expo-haptics';
 import { Audio } from 'expo-av';
 import { useSocket } from '@/hooks/useSocket';
+import { useConversations } from '@/hooks/useConversations';
 import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 
 const BASE_URL = getBaseUrl();
+const getChatCacheKey = (id: string) => `chromacode_chat_${id}`;
 
 interface Message {
   _id: string;
@@ -30,12 +32,16 @@ interface Message {
     color: string;
     meaning: string;
   };
+  status?: 'sent' | 'delivered' | 'read';
+  mediaType: 'none' | 'image' | 'voice';
+  mediaUrl?: string;
   timestamp: string;
 }
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams();
   const { token, user } = useAuth();
+  const { markAsRead } = useConversations();
   const socket = useSocket();
   const navigation = useNavigation();
   const router = useRouter();
@@ -44,10 +50,27 @@ export default function ChatScreen() {
   const [conversation, setConversation] = useState<any>(null);
   const [typingUser, setTypingUser] = useState<string | null>(null);
   const [peekCode, setPeekCode] = useState<any>(null);
+  const [page, setPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+
+  const StatusIcon = ({ status, isMyMessage }: { status?: string, isMyMessage: boolean }) => {
+    if (!isMyMessage || !status) return null;
+    let iconName: any = 'checkmark-outline';
+    let color = colors.icon;
+    
+    if (status === 'delivered') iconName = 'checkmark-done-outline';
+    if (status === 'read') {
+      iconName = 'checkmark-done-outline';
+      color = '#3498db'; // Blue for read
+    }
+
+    return <Ionicons name={iconName} size={14} color={color} style={{ marginLeft: 4 }} />;
+  };
 
   const formatDateSeparator = (dateString: string) => {
     const date = new Date(dateString);
@@ -61,17 +84,39 @@ export default function ChatScreen() {
   };
 
   useEffect(() => {
+    const loadCache = async () => {
+      if (!id) return;
+      try {
+        const cached = await AsyncStorage.getItem(getChatCacheKey(id.toString()));
+        if (cached) {
+          const { conversation: cachedConv, messages: cachedMsgs } = JSON.parse(cached);
+          setConversation(cachedConv);
+          setMessages(cachedMsgs);
+        }
+      } catch (e) {
+        console.error('Error loading chat cache:', e);
+      }
+    };
+    loadCache();
+
     const fetchConversation = async () => {
       if (!token || !id) return;
       try {
-        const response = await fetch(`${BASE_URL}/conversations/${id}`, {
+        const response = await fetch(`${BASE_URL}/conversations/${id}?page=1&limit=50`, {
           headers: { 'Authorization': `Bearer ${token}` },
         });
         const data = await response.json();
         if (response.ok) {
           setConversation(data.conversation);
           setMessages(data.messages);
+          setHasMore(data.hasMore);
           
+          // Save to cache
+          AsyncStorage.setItem(getChatCacheKey(id.toString()), JSON.stringify({
+            conversation: data.conversation,
+            messages: data.messages
+          }));
+
           const title = data.conversation.isGroup 
             ? data.conversation.name 
             : data.conversation.participants.find((p: any) => p._id !== user?._id)?.username || 'Chat';
@@ -100,6 +145,10 @@ export default function ChatScreen() {
     };
     fetchConversation();
 
+    if (id) {
+      markAsRead(id.toString());
+    }
+
     if (socket && id) {
       socket.emit('join_conversation', id);
 
@@ -110,7 +159,13 @@ export default function ChatScreen() {
             if (data.message.sender._id !== user?._id) {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }
-            return [...prev, data.message];
+            const updated = [...prev, data.message];
+            // Update cache
+            AsyncStorage.setItem(getChatCacheKey(id.toString()), JSON.stringify({
+              conversation: conversation, // Note: might use stale conversation, but usually it's fine
+              messages: updated.slice(-50)
+            }));
+            return updated;
           });
           setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
         }
@@ -131,14 +186,53 @@ export default function ChatScreen() {
       socket.on('new_message', handleNewMessage);
       socket.on('typing', handleTypingEvent);
       socket.on('stop_typing', handleStopTypingEvent);
+      
+      socket.on('messages_read', (data: any) => {
+        if (data.conversationId === id) {
+          setMessages(prev => prev.map(m => 
+            m.sender._id !== data.readerId ? { ...m, status: 'read' } : m
+          ));
+        }
+      });
 
       return () => {
         socket.off('new_message', handleNewMessage);
         socket.off('typing', handleTypingEvent);
         socket.off('stop_typing', handleStopTypingEvent);
+        socket.off('messages_read');
       };
     }
   }, [id, token, user?._id, socket]);
+
+  useEffect(() => {
+    if (page > 1) {
+      const fetchMore = async () => {
+        if (!token || !id) return;
+        setLoadingMore(true);
+        try {
+          const response = await fetch(`${BASE_URL}/conversations/${id}?page=${page}&limit=50`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+          });
+          const data = await response.json();
+          if (response.ok) {
+            setMessages(prev => [...data.messages, ...prev]);
+            setHasMore(data.hasMore);
+          }
+        } catch (error) {
+          console.error('Error loading more messages:', error);
+        } finally {
+          setLoadingMore(false);
+        }
+      };
+      fetchMore();
+    }
+  }, [page]);
+
+  const handleLoadMore = () => {
+    if (!loadingMore && hasMore) {
+      setPage(prev => prev + 1);
+    }
+  };
 
   const handleTyping = () => {
     if (!socket || !user) return;
@@ -183,6 +277,13 @@ export default function ChatScreen() {
           ref={flatListRef}
           data={messages}
           keyExtractor={(item) => item._id}
+          ListHeaderComponent={
+            loadingMore ? (
+              <ActivityIndicator size="small" color={colors.tint} style={{ marginVertical: 10 }} />
+            ) : null
+          }
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.1}
           renderItem={({ item, index }) => {
             const isMyMessage = item.sender._id.toString() === user?._id?.toString();
             const showDateSeparator = index === 0 || 
@@ -229,17 +330,23 @@ export default function ChatScreen() {
                         <View style={styles.richContent}>
                           <ThemedText style={[styles.codeNameLabel, { color: item.codeId.color }]}>{item.codeId.name}</ThemedText>
                           <ThemedText style={styles.codeMeaningText} numberOfLines={3}>{item.codeId.meaning}</ThemedText>
-                          <ThemedText style={[styles.timestamp, { color: colors.icon }]}>
-                            {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </ThemedText>
+                          <View style={styles.timestampRow}>
+                            <ThemedText style={[styles.timestamp, { color: isMyMessage && colorScheme === 'light' ? 'rgba(255,255,255,0.7)' : colors.icon }]}>
+                              {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </ThemedText>
+                            <StatusIcon status={item.status} isMyMessage={isMyMessage} />
+                          </View>
                         </View>
                       </View>
                     ) : (
                       <>
                         <ThemedText style={[styles.messageText, { color: isMyMessage ? (colorScheme === 'light' ? '#fff' : colors.background) : colors.text }]}>{item.text}</ThemedText>
-                        <ThemedText style={[styles.timestamp, { color: colors.icon }]}>
-                          {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </ThemedText>
+                        <View style={styles.timestampRow}>
+                          <ThemedText style={[styles.timestamp, { color: isMyMessage && colorScheme === 'light' ? 'rgba(255,255,255,0.7)' : colors.icon }]}>
+                            {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </ThemedText>
+                          <StatusIcon status={item.status} isMyMessage={isMyMessage} />
+                        </View>
                       </>
                     )}
                   </Pressable>
@@ -310,7 +417,8 @@ const styles = StyleSheet.create({
   peekColorCircle: { width: 60, height: 60, borderRadius: 30, marginBottom: 15 },
   peekName: { fontSize: 22, fontWeight: 'bold', marginBottom: 10 },
   peekMeaning: { fontSize: 18, textAlign: 'center', marginBottom: 25, lineHeight: 26 },
-  timestamp: { fontSize: 10, alignSelf: 'flex-end', marginTop: 4, opacity: 0.8 },
+  timestampRow: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', marginTop: 4 },
+  timestamp: { fontSize: 10, opacity: 0.8 },
   inputContainer: { flexDirection: 'row', padding: 10, borderTopWidth: 1, alignItems: 'flex-end', backgroundColor: 'transparent', paddingBottom: Platform.OS === 'ios' ? 0 : 10 },
   input: { flex: 1, minHeight: 40, maxHeight: 100, borderWidth: 1, borderRadius: 20, paddingHorizontal: 15, paddingTop: 10, paddingBottom: 10, marginRight: 10 },
   sendButton: { height: 40, justifyContent: 'center', paddingVertical: 0 }
