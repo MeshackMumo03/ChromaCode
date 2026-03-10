@@ -70,7 +70,7 @@ export default function ConversationsScreen() {
             onPress={() => router.push('/create-group')}
             activeOpacity={0.7}
           >
-            <Ionicons name="people-outline" size={24} color={colorScheme === 'dark' ? '#000' : '#fff'} />
+            <Ionicons name="people-outline" size={24} color="#fff" />
           </TouchableOpacity>
         </View>
         <FlatList
@@ -88,13 +88,13 @@ export default function ConversationsScreen() {
             const hasUnread = (item.unreadCount || 0) > 0;
             return (
               <TouchableOpacity
-                style={[styles.conversationItem, { borderBottomColor: colors.icon + '33' }]}
+                style={[styles.conversationItem, { borderBottomColor: colors.icon + '20' }]}
                 onPress={() => router.push(`/chat/${item._id}`)}
               >
                 <View>
                   <Image 
                     source={{ uri: getConversationAvatar(item) }} 
-                    style={styles.avatar} 
+                    style={[styles.avatar, { backgroundColor: colors.icon + '10' }]} 
                   />
                 </View>
                 <View style={styles.content}>

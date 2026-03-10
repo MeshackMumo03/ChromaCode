@@ -44,7 +44,7 @@ function RootLayoutNav() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="chat" options={{ headerShown: false }} />
           </Stack>
-          <StatusBar style="auto" />
+          <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
         </ThemeProvider>
       </ConversationsProvider>
     </SocketProvider>

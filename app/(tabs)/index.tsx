@@ -139,78 +139,80 @@ export default function HomeScreen() {
   }, [token]);
 
   return (
-    <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
-        <HelloWave />
-        <ThemedText style={[styles.title, { color: colors.text }]}>Welcome to ChromaCode!</ThemedText>
-      </View>
-      
-      <ThemedText style={[styles.sectionTitle, { color: colors.text }]}>Find Friends</ThemedText>
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={[styles.searchInput, { color: colors.text, borderColor: colors.icon, backgroundColor: colors.background }]}
-          placeholder="Search by username"
-          placeholderTextColor={colors.icon}
-          value={searchTerm}
-          onChangeText={setSearchTerm}
-          autoCapitalize="none"
-        />
-        <StyledButton title="Search" onPress={handleSearch} isLoading={isLoading} />
-      </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.header}>
+          <HelloWave />
+          <ThemedText style={[styles.title, { color: colors.text }]}>Welcome to ChromaCode!</ThemedText>
+        </View>
+        
+        <ThemedText style={[styles.sectionTitle, { color: colors.text }]}>Find Friends</ThemedText>
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={[styles.searchInput, { color: colors.text, borderColor: colors.icon, backgroundColor: colors.background }]}
+            placeholder="Search by username"
+            placeholderTextColor={colors.icon}
+            value={searchTerm}
+            onChangeText={setSearchTerm}
+            autoCapitalize="none"
+          />
+          <StyledButton title="Search" onPress={handleSearch} isLoading={isLoading} />
+        </View>
 
-      {isLoading ? (
-        <ThemedText style={{color: colors.text}}>Searching...</ThemedText>
-      ) : (
-        <FlatList
-          data={searchResults}
-          keyExtractor={(item) => item._id}
-          renderItem={({ item }) => (
-            <View style={styles.userResultItem}>
-              <ThemedText style={{color: colors.text}}>{item.username}</ThemedText>
-              {user?._id !== item._id && (
-                <StyledButton title="Add Friend" onPress={() => handleAddFriend(item._id, item.username)} />
-              )}
-            </View>
-          )}
-          style={styles.searchResultsList}
-        />
-      )}
-
-      <ThemedText style={[styles.sectionTitle, { color: colors.text }]}>Your Friends</ThemedText>
-      {isFetchingFriends ? (
-        <ThemedText style={{color: colors.text}}>Loading friends...</ThemedText>
-      ) : (
-        friends.length > 0 ? (
+        {isLoading ? (
+          <ThemedText style={{color: colors.text}}>Searching...</ThemedText>
+        ) : (
           <FlatList
-            data={friends}
+            data={searchResults}
             keyExtractor={(item) => item._id}
             renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.userResultItem}
-                onPress={() => handleStartChat(item._id, item.username)}
-              >
+              <View style={[styles.userResultItem, { borderBottomColor: colors.icon + '33' }]}>
                 <ThemedText style={{color: colors.text}}>{item.username}</ThemedText>
-                <ThemedText style={{ color: colors.tint }}>Start Chat</ThemedText>
-              </TouchableOpacity>
+                {user?._id !== item._id && (
+                  <StyledButton title="Add Friend" onPress={() => handleAddFriend(item._id, item.username)} />
+                )}
+              </View>
             )}
-            style={styles.friendsList}
-            contentContainerStyle={friends.length > 0 ? null : styles.noFriendsContent}
+            style={[styles.searchResultsList, { borderColor: colors.icon + '33' }]}
           />
-        ) : (
-          <ThemedText style={[styles.noFriendsText, {color: colors.icon}]}>No friends yet. Find some above!</ThemedText>
-        )
-      )}
+        )}
 
-      <View style={styles.content}>
-        <ThemedText style={[styles.subtitle, { color: colors.text }]}>Your secret language, simplified.</ThemedText>
-        <ThemedText style={[styles.paragraph, { color: colors.text }]}>
-          ChromaCode helps you communicate with your close friends, family, or partner using a color-based language that you create together.
-        </ThemedText>
-        <ThemedText style={[styles.paragraph, { color: colors.text }]}>
-          Go to the <ThemedText style={{ fontWeight: 'bold' }}>Chroma</ThemedText> tab to send a code, check the <ThemedText style={{ fontWeight: 'bold' }}>History</ThemedText> tab to see your recent communications, and customize your codes in the settings.
-        </ThemedText>
-      </View>
-    </ThemedView>
+        <ThemedText style={[styles.sectionTitle, { color: colors.text }]}>Your Friends</ThemedText>
+        {isFetchingFriends ? (
+          <ThemedText style={{color: colors.text}}>Loading friends...</ThemedText>
+        ) : (
+          friends.length > 0 ? (
+            <FlatList
+              data={friends}
+              keyExtractor={(item) => item._id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[styles.userResultItem, { borderBottomColor: colors.icon + '33' }]}
+                  onPress={() => handleStartChat(item._id, item.username)}
+                >
+                  <ThemedText style={{color: colors.text}}>{item.username}</ThemedText>
+                  <ThemedText style={{ color: colors.tint }}>Start Chat</ThemedText>
+                </TouchableOpacity>
+              )}
+              style={[styles.friendsList, { borderColor: colors.icon + '33' }]}
+              contentContainerStyle={friends.length > 0 ? null : styles.noFriendsContent}
+            />
+          ) : (
+            <ThemedText style={[styles.noFriendsText, {color: colors.icon}]}>No friends yet. Find some above!</ThemedText>
+          )
+        )}
+
+        <View style={styles.content}>
+          <ThemedText style={[styles.subtitle, { color: colors.text }]}>Your secret language, simplified.</ThemedText>
+          <ThemedText style={[styles.paragraph, { color: colors.text }]}>
+            ChromaCode helps you communicate with your close friends, family, or partner using a color-based language that you create together.
+          </ThemedText>
+          <ThemedText style={[styles.paragraph, { color: colors.text }]}>
+            Go to the <ThemedText style={{ fontWeight: 'bold' }}>Chroma</ThemedText> tab to send a code, check the <ThemedText style={{ fontWeight: 'bold' }}>History</ThemedText> tab to see your recent communications, and customize your codes in the settings.
+          </ThemedText>
+        </View>
+      </ThemedView>
+    </SafeAreaView>
   );
 }
 
@@ -225,7 +227,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 20,
-    paddingTop: 35,
+    paddingTop: 10,
   },
   title: {
     fontSize: 28,
@@ -257,7 +259,6 @@ const styles = StyleSheet.create({
     width: '100%',
     maxHeight: 150,
     borderWidth: 1,
-    borderColor: '#eee',
     borderRadius: 8,
     marginBottom: 20,
   },
@@ -267,7 +268,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   content: {
     width: '100%',
@@ -289,7 +289,6 @@ const styles = StyleSheet.create({
     width: '100%',
     maxHeight: 150,
     borderWidth: 1,
-    borderColor: '#eee',
     borderRadius: 8,
     marginBottom: 20,
   },

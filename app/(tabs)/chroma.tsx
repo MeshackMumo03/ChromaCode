@@ -180,7 +180,15 @@ export default function ChromaScreen() {
 
         {isPreviewVisible && selectedCode ? (
           <View style={styles.previewContainer}>
-            <View style={[styles.previewCard, { backgroundColor: colorScheme === 'dark' ? '#1A1A1A' : '#F5F5F5', borderLeftWidth: 10, borderLeftColor: selectedCode.color }]}>
+            <View style={[
+              styles.previewCard, 
+              { 
+                backgroundColor: colorScheme === 'dark' ? '#1A1A1A' : '#FFFFFF', 
+                borderLeftWidth: 10, 
+                borderLeftColor: selectedCode.color,
+                shadowColor: colors.text,
+              }
+            ]}>
               <View style={styles.previewHeader}>
                 <View style={[styles.previewColorCircle, { backgroundColor: selectedCode.color }]} />
                 <ThemedText style={styles.previewName}>{selectedCode.name}</ThemedText>

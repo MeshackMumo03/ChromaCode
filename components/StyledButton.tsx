@@ -22,7 +22,7 @@ export function StyledButton({ title, onPress, disabled, isLoading, style, textS
     style,
   ];
 
-  const textColor = colorScheme === 'light' ? '#fff' : Colors.dark.background;
+  const textColor = '#fff';
 
   return (
     <TouchableOpacity onPress={onPress} disabled={disabled || isLoading} style={buttonStyle}>

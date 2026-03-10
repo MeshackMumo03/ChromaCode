@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, ScrollView, TouchableOpacity, View, Switch, Alert, Platform } from 'react-native';
+import { StyleSheet, ScrollView, TouchableOpacity, View, Switch, Alert, Platform, Modal, TextInput } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
@@ -11,6 +11,10 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSettings, ThemePreference } from '@/hooks/useSettings';
 import { useAuth } from '@/hooks/useAuth';
+import { getBaseUrl } from '@/constants/api';
+import { StyledButton } from '@/components/StyledButton';
+
+const BASE_URL = getBaseUrl();
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -18,6 +22,11 @@ export default function SettingsScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const { themePreference, setThemePreference, notificationsEnabled, setNotificationsEnabled } = useSettings();
   const { user, token, logout } = useAuth();
+  
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isChanging, setIsChanging] = useState(false);
 
   const handleClearCache = async () => {
     Alert.alert(
@@ -43,6 +52,49 @@ export default function SettingsScreen() {
         }
       ]
     );
+  };
+
+  const handleChangePassword = async () => {
+    if (!newPassword || !confirmPassword) {
+      Alert.alert('Error', 'Please fill in all fields.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match.');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters.');
+      return;
+    }
+
+    setIsChanging(true);
+    try {
+      const response = await fetch(`${BASE_URL}/users/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ password: newPassword }),
+      });
+
+      if (response.ok) {
+        Alert.alert('Success', 'Password updated successfully.');
+        setPasswordModalVisible(false);
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        const data = await response.json();
+        Alert.alert('Error', data.message || 'Failed to update password.');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Network error. Please try again.');
+    } finally {
+      setIsChanging(false);
+    }
   };
 
   const SettingRow = ({ icon, label, children, onPress }: any) => (
@@ -116,7 +168,7 @@ export default function SettingsScreen() {
           <SettingRow 
             icon="person-remove-outline" 
             label="Blocked Users" 
-            onPress={() => Alert.alert('Blocked Users', 'Feature to view and unblock users is coming soon.')} 
+            onPress={() => router.push('/blocked-users')} 
           >
             <Ionicons name="chevron-forward" size={20} color={colors.icon} />
           </SettingRow>
@@ -127,7 +179,7 @@ export default function SettingsScreen() {
           <SettingRow 
             icon="lock-closed-outline" 
             label="Change Password" 
-            onPress={() => Alert.alert('Coming Soon', 'Password change feature is in development.')} 
+            onPress={() => setPasswordModalVisible(true)} 
           >
             <Ionicons name="chevron-forward" size={20} color={colors.icon} />
           </SettingRow>
@@ -163,6 +215,56 @@ export default function SettingsScreen() {
         
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      <Modal
+        visible={passwordModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setPasswordModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <ThemedView style={styles.modalContent}>
+            <ThemedText style={styles.modalTitle}>Change Password</ThemedText>
+            
+            <TextInput
+              style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: colors.background }]}
+              placeholder="New Password"
+              placeholderTextColor={colors.icon}
+              secureTextEntry
+              value={newPassword}
+              onChangeText={setNewPassword}
+            />
+            
+            <TextInput
+              style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: colors.background }]}
+              placeholder="Confirm New Password"
+              placeholderTextColor={colors.icon}
+              secureTextEntry
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, { backgroundColor: colors.icon + '40' }]} 
+                onPress={() => setPasswordModalVisible(false)}
+              >
+                <ThemedText>Cancel</ThemedText>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.modalButton, { backgroundColor: colors.tint }]} 
+                onPress={handleChangePassword}
+                disabled={isChanging}
+              >
+                <ThemedText style={{ color: '#fff', fontWeight: 'bold' }}>
+                  {isChanging ? 'Updating...' : 'Update'}
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
+          </ThemedView>
+        </View>
+      </Modal>
     </ThemedView>
   );
 }
@@ -230,5 +332,41 @@ const styles = StyleSheet.create({
     color: '#FF3B30',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    padding: 20,
+    borderRadius: 20,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  input: {
+    width: '100%',
+    padding: 15,
+    borderWidth: 1,
+    borderRadius: 12,
+    marginBottom: 15,
+    fontSize: 16,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    width: '100%',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  modalButton: {
+    flex: 0.48,
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
   }
 });

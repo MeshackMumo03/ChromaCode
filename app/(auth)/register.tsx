@@ -124,9 +124,11 @@ export default function RegisterScreen() {
             <ThemedText style={styles.googleButtonText}>Continue with Google</ThemedText>
           </TouchableOpacity>
 
-          <ThemedText style={[styles.link, { color: colors.tint }]} onPress={() => router.push('/login')}>
-            Already have an account? Login
-          </ThemedText>
+          <TouchableOpacity onPress={() => router.push('/login')} style={styles.linkContainer}>
+            <ThemedText style={styles.linkText}>
+              Already have an account? <ThemedText style={{ color: colors.tint, fontWeight: 'bold' }}>Login</ThemedText>
+            </ThemedText>
+          </TouchableOpacity>
         </ThemedView>
       </ScrollView>
     </SafeAreaView>
@@ -142,6 +144,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    paddingBottom: 40, // Extra padding at bottom
   },
   logo: {
     width: 80,
@@ -189,15 +192,17 @@ const styles = StyleSheet.create({
     width: '100%',
     borderWidth: 1,
     borderRadius: 12,
-    marginBottom: 20,
+    marginBottom: 30, // More space after google button
   },
   googleButtonText: {
     fontSize: 16,
     fontWeight: '600',
   },
-  link: {
+  linkContainer: {
     marginTop: 10,
+    padding: 10,
+  },
+  linkText: {
     fontSize: 16,
-    fontWeight: '600',
   },
 });

@@ -3,8 +3,18 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const path = require('path');
+const fs = require('fs');
 const connectDB = require('./db');
 const userRoutes = require('./routes/userRoutes'); // Uncommented
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+    console.log('Created uploads directory:', uploadsDir);
+}
+
 const conversationRoutes = require('./routes/conversationRoutes');
 const codeRoutes = require('./routes/codeRoutes'); // Add this line
 const historyRoutes = require('./routes/historyRoutes'); // Add this line
@@ -72,6 +82,9 @@ connectDB();
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from the 'uploads' directory
+app.use('/uploads', express.static(uploadsDir));
 
 // Simple request logger for debugging
 app.use((req, res, next) => {

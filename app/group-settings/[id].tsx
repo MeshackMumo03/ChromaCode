@@ -84,6 +84,40 @@ export default function GroupSettingsScreen() {
     }
   };
 
+  const uploadToBackend = async (uri: string) => {
+    setSaving(true);
+    const formData = new FormData();
+    formData.append('image', {
+      uri,
+      type: 'image/jpeg',
+      name: 'group.jpg',
+    } as any);
+
+    try {
+      const response = await fetch(`${BASE_URL}/users/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+      const data = await response.json();
+      if (data.imageUrl) {
+        const fullUrl = `${BASE_URL}${data.imageUrl}`;
+        setGroupImage(fullUrl);
+        handleUpdateGroup(fullUrl);
+      } else {
+        console.error('Backend upload error:', data);
+        Alert.alert('Upload Failed', data.message || 'Could not upload image.');
+      }
+    } catch (error) {
+      console.error('Backend upload error:', error);
+      Alert.alert('Upload Failed', 'Could not upload image to server.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const pickImage = async () => {
     if (!isAdmin) return;
 
@@ -101,43 +135,7 @@ export default function GroupSettingsScreen() {
     });
 
     if (!result.canceled) {
-      uploadToCloudinary(result.assets[0].uri);
-    }
-  };
-
-  const uploadToCloudinary = async (uri: string) => {
-    setSaving(true);
-    const formData = new FormData();
-    formData.append('file', {
-      uri,
-      type: 'image/jpeg',
-      name: 'group.jpg',
-    } as any);
-
-    const cloudName = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME || 'demo';
-    const uploadPreset = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'chromacode';
-    
-    console.log(`Uploading to Cloudinary (Group): cloudName=${cloudName}, uploadPreset=${uploadPreset}`);
-    formData.append('upload_preset', uploadPreset); 
-
-    try {
-      const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await response.json();
-      if (data.secure_url) {
-        setGroupImage(data.secure_url);
-        handleUpdateGroup(data.secure_url);
-      } else {
-        console.error('Cloudinary response error:', data);
-        Alert.alert('Upload Failed', data.error?.message || 'Could not upload image.');
-      }
-    } catch (error) {
-      console.error('Cloudinary upload error:', error);
-      Alert.alert('Upload Failed', 'Could not upload image to cloud.');
-    } finally {
-      setSaving(false);
+      uploadToBackend(result.assets[0].uri);
     }
   };
 

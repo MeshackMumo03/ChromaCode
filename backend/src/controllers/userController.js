@@ -129,50 +129,21 @@ const googleLogin = asyncHandler(async (req, res) => {
   let user = await User.findOne({ email });
 
   if (user) {
-    // Existing user - if not verified, resend code and require verification
-    if (!user.isVerified) {
-      const newCode = Math.floor(100000 + Math.random() * 900000).toString();
-      user.verificationCode = newCode;
-      user.isGoogleUser = true; // Mark as Google user if they logged in with Google
-      await user.save();
-      sendVerificationEmail(email, newCode);
-      
-      res.status(401).json({
-        message: 'Please verify your email. A verification code has been sent.',
-        needsVerification: true,
-        email: user.email
-      });
-      return;
-    }
-    
-    // Ensure marked as Google user if they aren't already
-    if (!user.isGoogleUser) {
-      user.isGoogleUser = true;
-      await user.save();
-    }
+    // Existing user - if they log in with Google, we trust the email is verified
+    user.isVerified = true;
+    user.isGoogleUser = true;
+    user.verificationCode = undefined;
+    await user.save();
   } else {
-    // Create new Google user (unverified by default now as per request)
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-    
+    // Create new Google user (verified by default)
     user = await User.create({
       username,
       email,
       password: await bcrypt.hash(Math.random().toString(36), 10), // Random password
       profilePicture: profilePicture || 'https://www.gravatar.com/avatar/?d=mp',
-      isVerified: false, 
-      verificationCode,
+      isVerified: true, 
       isGoogleUser: true,
     });
-
-    // Send verification email
-    sendVerificationEmail(email, verificationCode);
-
-    res.status(201).json({
-      message: 'Verification code sent to your email',
-      needsVerification: true,
-      email: user.email
-    });
-    return;
   }
 
   res.json({
@@ -477,6 +448,21 @@ const unblockUser = asyncHandler(async (req, res) => {
   res.json({ message: 'User unblocked successfully' });
 });
 
+// @desc    Upload an image
+// @route   POST /api/users/upload
+// @access  Private
+const uploadImage = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    res.status(400);
+    throw new Error('Please upload an image');
+  }
+
+  // Return the path that can be used to access the image
+  // We'll return just the relative path from the server root
+  const imagePath = `/uploads/${req.file.filename}`;
+  res.json({ imageUrl: imagePath });
+});
+
 module.exports = {
     registerUser,
     loginUser,
@@ -495,4 +481,5 @@ module.exports = {
     updatePushToken,
     blockUser,
     unblockUser,
+    uploadImage,
 };

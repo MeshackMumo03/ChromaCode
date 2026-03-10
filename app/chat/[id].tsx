@@ -315,7 +315,7 @@ export default function ChatScreen() {
                       { 
                         backgroundColor: item.codeId 
                           ? (colorScheme === 'dark' ? '#2A2A2A' : '#FFFFFF')
-                          : (isMyMessage ? colors.tint : (colorScheme === 'light' ? '#E0E0E0' : colors.icon)),
+                          : (isMyMessage ? colors.tint : (colorScheme === 'light' ? '#E9E9EB' : '#333333')),
                         borderWidth: item.codeId ? 1 : 0,
                         borderColor: item.codeId ? item.codeId.color : 'transparent',
                         padding: item.codeId ? 0 : 10,
@@ -334,25 +334,24 @@ export default function ChatScreen() {
                           <ThemedText style={[styles.codeNameLabel, { color: item.codeId.color }]}>{item.codeId.name}</ThemedText>
                           <ThemedText style={styles.codeMeaningText} numberOfLines={3}>{item.codeId.meaning}</ThemedText>
                           <View style={styles.timestampRow}>
-                            <ThemedText style={[styles.timestamp, { color: isMyMessage ? (colorScheme === 'light' ? 'rgba(255,255,255,0.8)' : '#000') : colors.icon }]}>
+                            <ThemedText style={[styles.timestamp, { color: isMyMessage ? (colorScheme === 'light' ? 'rgba(255,255,255,0.8)' : '#000') : (colorScheme === 'dark' ? 'rgba(255,255,255,0.7)' : colors.icon) }]}>
                               {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </ThemedText>
                             <StatusIcon status={item.status} isMyMessage={isMyMessage} />
                           </View>
-                        </View>
-                      </View>
-                    ) : (
-                      <>
-                        <ThemedText style={[styles.messageText, { color: isMyMessage ? (colorScheme === 'light' ? '#fff' : colors.background) : colors.text }]}>{item.text}</ThemedText>
-                        <View style={styles.timestampRow}>
-                          <ThemedText style={[styles.timestamp, { color: isMyMessage ? (colorScheme === 'light' ? 'rgba(255,255,255,0.8)' : '#000') : colors.icon }]}>
+                          </View>
+                          </View>
+                          ) : (
+                          <>
+                          <ThemedText style={[styles.messageText, { color: isMyMessage ? (colorScheme === 'light' ? '#fff' : colors.background) : colors.text }]}>{item.text}</ThemedText>
+                          <View style={styles.timestampRow}>
+                          <ThemedText style={[styles.timestamp, { color: isMyMessage ? (colorScheme === 'light' ? 'rgba(255,255,255,0.8)' : '#000') : (colorScheme === 'dark' ? 'rgba(255,255,255,0.7)' : colors.icon) }]}>
                             {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </ThemedText>
                           <StatusIcon status={item.status} isMyMessage={isMyMessage} />
-                        </View>
-                      </>
-                    )}
-                  </Pressable>
+                          </View>
+                          </>
+                          )}                  </Pressable>
                 </View>
               </View>
             );
