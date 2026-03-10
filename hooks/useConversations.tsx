@@ -143,10 +143,14 @@ export function ConversationsProvider({ children }: { children: React.ReactNode 
       const handleMessagesRead = (data: any) => {
         setConversations(prev => {
           const updated = prev.map(conv => {
-            if (conv._id === data.conversationId && conv.lastMessage && conv.lastMessage.sender._id !== data.readerId) {
+            if (conv._id === data.conversationId) {
+              const isMe = data.readerId === user?._id;
               return {
                 ...conv,
-                lastMessage: { ...conv.lastMessage, status: 'read' }
+                unreadCount: isMe ? 0 : conv.unreadCount,
+                lastMessage: conv.lastMessage && conv.lastMessage.sender._id !== data.readerId 
+                  ? { ...conv.lastMessage, status: 'read' } 
+                  : conv.lastMessage
               };
             }
             return conv;

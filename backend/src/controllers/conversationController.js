@@ -62,16 +62,13 @@ const startConversation = asyncHandler(async (req, res) => {
   const io = req.app.get('io');
   const connectedUsers = req.app.get('connectedUsers');
   
-  // Emit to all participants except the sender (who already got the response via REST)
+  // Emit to all participants except the sender
   conversation.participants.forEach(participantId => {
     if (participantId.toString() !== senderId.toString()) {
-      const socketId = connectedUsers.get(participantId.toString());
-      if (socketId) {
-        io.to(socketId).emit('new_message', {
-          conversationId: conversation._id,
-          message: message
-        });
-      }
+      io.to(participantId.toString()).emit('new_message', {
+        conversationId: conversation._id,
+        message: message
+      });
     }
   });
 
@@ -248,16 +245,13 @@ const sendMessage = asyncHandler(async (req, res) => {
   const io = req.app.get('io');
   const connectedUsers = req.app.get('connectedUsers');
 
-  // Emit to all participants except the sender (who already got the response via REST)
+  // Emit to all participants except the sender
   conversation.participants.forEach(participantId => {
     if (participantId.toString() !== senderId.toString()) {
-      const socketId = connectedUsers.get(participantId.toString());
-      if (socketId) {
-        io.to(socketId).emit('new_message', {
-          conversationId: conversation._id,
-          message: message
-        });
-      }
+      io.to(participantId.toString()).emit('new_message', {
+        conversationId: conversation._id,
+        message: message
+      });
     }
   });
 
@@ -447,10 +441,7 @@ const markMessagesAsRead = asyncHandler(async (req, res) => {
   const connectedUsers = req.app.get('connectedUsers');
 
   conversation.participants.forEach(participantId => {
-    const socketId = connectedUsers.get(participantId.toString());
-    if (socketId) {
-      io.to(socketId).emit('messages_read', { conversationId, readerId: userId });
-    }
+    io.to(participantId.toString()).emit('messages_read', { conversationId, readerId: userId });
   });
 
   res.json({ message: 'Messages marked as read' });

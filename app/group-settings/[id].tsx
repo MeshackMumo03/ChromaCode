@@ -116,6 +116,8 @@ export default function GroupSettingsScreen() {
 
     const cloudName = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME || 'demo';
     const uploadPreset = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'chromacode';
+    
+    console.log(`Uploading to Cloudinary (Group): cloudName=${cloudName}, uploadPreset=${uploadPreset}`);
     formData.append('upload_preset', uploadPreset); 
 
     try {

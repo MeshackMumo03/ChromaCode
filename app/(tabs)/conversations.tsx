@@ -68,8 +68,9 @@ export default function ConversationsScreen() {
           <TouchableOpacity 
             style={[styles.addGroupBtn, { backgroundColor: colors.tint }]}
             onPress={() => router.push('/create-group')}
+            activeOpacity={0.7}
           >
-            <Ionicons name="people-outline" size={24} color="#fff" />
+            <Ionicons name="people-outline" size={24} color={colorScheme === 'dark' ? '#000' : '#fff'} />
           </TouchableOpacity>
         </View>
         <FlatList

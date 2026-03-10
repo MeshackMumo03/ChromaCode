@@ -27,7 +27,8 @@ io.on('connection', (socket) => {
 
     socket.on('join', (userId) => {
         connectedUsers.set(userId, socket.id);
-        console.log(`User ${userId} joined with socket ${socket.id}`);
+        socket.join(userId); // Join a room for this user
+        console.log(`User ${userId} joined with socket ${socket.id} and room ${userId}`);
         // Broadcast that this user is now online
         io.emit('user_status_change', { userId, status: 'online' });
     });

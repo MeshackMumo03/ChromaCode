@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, TextInput, FlatList, Alert, View, Platform, KeyboardAvoidingView, Modal, Pressable, TouchableOpacity, useColorScheme } from 'react-native';
+import { StyleSheet, TextInput, FlatList, Alert, View, Platform, KeyboardAvoidingView, Modal, Pressable, TouchableOpacity, useColorScheme, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
@@ -14,6 +14,7 @@ import { useSocket } from '@/hooks/useSocket';
 import { useConversations } from '@/hooks/useConversations';
 import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BASE_URL = getBaseUrl();
 const getChatCacheKey = (id: string) => `chromacode_chat_${id}`;
@@ -158,11 +159,13 @@ export default function ChatScreen() {
             if (prev.find(m => m._id === data.message._id)) return prev;
             if (data.message.sender._id !== user?._id) {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              // Mark as read immediately if we are in this chat
+              markAsRead(id.toString());
             }
             const updated = [...prev, data.message];
             // Update cache
             AsyncStorage.setItem(getChatCacheKey(id.toString()), JSON.stringify({
-              conversation: conversation, // Note: might use stale conversation, but usually it's fine
+              conversation: conversation, 
               messages: updated.slice(-50)
             }));
             return updated;
@@ -331,7 +334,7 @@ export default function ChatScreen() {
                           <ThemedText style={[styles.codeNameLabel, { color: item.codeId.color }]}>{item.codeId.name}</ThemedText>
                           <ThemedText style={styles.codeMeaningText} numberOfLines={3}>{item.codeId.meaning}</ThemedText>
                           <View style={styles.timestampRow}>
-                            <ThemedText style={[styles.timestamp, { color: isMyMessage && colorScheme === 'light' ? 'rgba(255,255,255,0.7)' : colors.icon }]}>
+                            <ThemedText style={[styles.timestamp, { color: isMyMessage ? (colorScheme === 'light' ? 'rgba(255,255,255,0.8)' : '#000') : colors.icon }]}>
                               {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </ThemedText>
                             <StatusIcon status={item.status} isMyMessage={isMyMessage} />
@@ -342,7 +345,7 @@ export default function ChatScreen() {
                       <>
                         <ThemedText style={[styles.messageText, { color: isMyMessage ? (colorScheme === 'light' ? '#fff' : colors.background) : colors.text }]}>{item.text}</ThemedText>
                         <View style={styles.timestampRow}>
-                          <ThemedText style={[styles.timestamp, { color: isMyMessage && colorScheme === 'light' ? 'rgba(255,255,255,0.7)' : colors.icon }]}>
+                          <ThemedText style={[styles.timestamp, { color: isMyMessage ? (colorScheme === 'light' ? 'rgba(255,255,255,0.8)' : '#000') : colors.icon }]}>
                             {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </ThemedText>
                           <StatusIcon status={item.status} isMyMessage={isMyMessage} />
