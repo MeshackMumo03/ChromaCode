@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, TextInput, FlatList, Alert, View, Platform, KeyboardAvoidingView, Modal, Pressable, TouchableOpacity, useColorScheme, ActivityIndicator } from 'react-native';
+import { StyleSheet, TextInput, FlatList, Alert, View, Platform, KeyboardAvoidingView, Modal, Pressable, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getBaseUrl } from '@/constants/api';
 import { StyledButton } from '@/components/StyledButton';
 import * as Haptics from 'expo-haptics';

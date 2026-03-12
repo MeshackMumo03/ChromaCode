@@ -11,7 +11,7 @@ import { useSettings } from '@/hooks/useSettings';
 import UserSelectionModal from '@/components/UserSelectionModal';
 import { useAuth } from '@/hooks/useAuth';
 import { Colors } from '@/constants/theme';
-import { useColorScheme } from 'react-native';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useCodes } from '@/hooks/useCodes'; // Import useCodes
 import { useRouter, useFocusEffect } from 'expo-router'; // Import useRouter
 import { StyledButton } from '@/components/StyledButton'; // Import StyledButton

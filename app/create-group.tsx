@@ -6,7 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
-import { useColorScheme } from 'react-native';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getBaseUrl } from '@/constants/api';
 import { StyledButton } from '@/components/StyledButton';
 import { Ionicons } from '@expo/vector-icons';

@@ -4,9 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/hooks/useAuth';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useNavigation } from 'expo-router';
 import { Colors } from '@/constants/theme';
-import { useColorScheme } from 'react-native';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getBaseUrl } from '@/constants/api';
 import { StyledButton } from '@/components/StyledButton';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +19,7 @@ export default function GroupSettingsScreen() {
   const { id } = useLocalSearchParams();
   const { token, user } = useAuth();
   const router = useRouter();
+  const navigation = useNavigation();
   const [conversation, setConversation] = useState<any>(null);
   const [groupName, setGroupName] = useState('');
   const [groupImage, setGroupImage] = useState('');
@@ -27,6 +28,12 @@ export default function GroupSettingsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerShown: false,
+    });
+  }, [navigation]);
 
   const fetchGroupDetails = useCallback(async () => {
     if (!token || !id) return;
@@ -103,7 +110,8 @@ export default function GroupSettingsScreen() {
       });
       const data = await response.json();
       if (data.imageUrl) {
-        const fullUrl = `${BASE_URL}${data.imageUrl}`;
+        const serverUrl = BASE_URL.replace('/api', '');
+        const fullUrl = `${serverUrl}${data.imageUrl}`;
         setGroupImage(fullUrl);
         handleUpdateGroup(fullUrl);
       } else {

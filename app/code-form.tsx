@@ -5,7 +5,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useCodes } from '@/hooks/useCodes';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
-import { useColorScheme } from 'react-native';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { StyledButton } from '@/components/StyledButton'; // Import StyledButton
 import { useSettings } from '@/hooks/useSettings'; // Import useSettings
 

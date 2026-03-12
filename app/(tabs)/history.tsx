@@ -5,7 +5,7 @@ import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useHistory, HistoryItem } from '@/hooks/useHistory';
 import { Colors } from '@/constants/theme';
-import { useColorScheme } from 'react-native';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function HistoryScreen() {
   const { history, isLoading, error, fetchHistory } = useHistory();

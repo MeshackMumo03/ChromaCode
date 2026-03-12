@@ -5,7 +5,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useCodes } from '@/hooks/useCodes';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
-import { useColorScheme } from 'react-native';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Code } from '@/constants/codes';
 
 export default function CodeManagementScreen() {

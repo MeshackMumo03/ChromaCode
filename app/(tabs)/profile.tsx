@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRouter, useNavigation } from 'expo-router';
 import { StyledButton } from '@/components/StyledButton'; // Import StyledButton
 import { Colors } from '@/constants/theme';
-import { useColorScheme } from 'react-native';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getBaseUrl } from '@/constants/api'; // Import getBaseUrl
 
 import * as ImagePicker from 'expo-image-picker';
@@ -119,8 +119,10 @@ export default function ProfileScreen() {
       });
       const data = await response.json();
       if (data.imageUrl) {
-        // Full URL is needed for the Image component
-        const fullUrl = `${BASE_URL}${data.imageUrl}`;
+        // The backend returns /uploads/filename. 
+        // BASE_URL already contains /api, but static files are served at /uploads.
+        const serverUrl = BASE_URL.replace('/api', '');
+        const fullUrl = `${serverUrl}${data.imageUrl}`;
         setProfilePicture(fullUrl);
         handleUpdateProfile(fullUrl);
       } else {
