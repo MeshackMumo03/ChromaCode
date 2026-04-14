@@ -47,7 +47,7 @@ const startConversation = asyncHandler(async (req, res) => {
     readBy: [senderId],
   });
 
-  // Ensure the message is fully populated before emitting
+  // Populate the sender and codeId fields before sending the message in the response
   await message.populate([
     { path: 'sender', select: 'username profilePicture' },
     { path: 'codeId' }
@@ -60,7 +60,6 @@ const startConversation = asyncHandler(async (req, res) => {
 
   // Emit socket event
   const io = req.app.get('io');
-  const connectedUsers = req.app.get('connectedUsers');
   
   // Emit to all participants except the sender
   conversation.participants.forEach(participantId => {
@@ -189,11 +188,11 @@ const getConversation = asyncHandler(async (req, res) => {
 // @route   POST /api/conversations/:id/messages
 // // @access  Private
 const sendMessage = asyncHandler(async (req, res) => {
-  const { text, codeId, mediaType, mediaUrl } = req.body;
+  const { text, codeId, mediaType, mediaUrl, mediaData, fileName, fileSize, fileMimeType } = req.body;
   const senderId = req.user._id;
   const conversationId = req.params.id;
 
-  if (!text && !mediaUrl) {
+  if (!text && !mediaUrl && !mediaData) {
     res.status(400);
     throw new Error('Message content is required');
   }
@@ -220,6 +219,12 @@ const sendMessage = asyncHandler(async (req, res) => {
 
   const validCodeId = codeId && mongoose.Types.ObjectId.isValid(codeId) ? codeId : null;
 
+  // If mediaData is provided in Base64 (from frontend), convert to Buffer
+  let bufferData = null;
+  if (mediaData) {
+    bufferData = Buffer.from(mediaData, 'base64');
+  }
+
   const message = await Message.create({
     conversationId,
     sender: senderId,
@@ -227,6 +232,10 @@ const sendMessage = asyncHandler(async (req, res) => {
     codeId: validCodeId,
     mediaType: mediaType || 'none',
     mediaUrl: mediaUrl || '',
+    mediaData: bufferData,
+    fileName: fileName || '',
+    fileSize: fileSize || 0,
+    fileMimeType: fileMimeType || '',
     readBy: [senderId],
   });
 
@@ -236,6 +245,12 @@ const sendMessage = asyncHandler(async (req, res) => {
     { path: 'codeId' }
   ]);
 
+  // For real-time response, we don't want to send the entire buffer back if it's large
+  // but we should set a URL that can be used to fetch the media
+  if (message.mediaData) {
+    message.mediaUrl = `/api/conversations/messages/${message._id}/media`;
+  }
+
   // Explicitly update lastMessage and updatedAt to force sorting to work
   conversation.lastMessage = message._id;
   conversation.updatedAt = new Date();
@@ -243,14 +258,17 @@ const sendMessage = asyncHandler(async (req, res) => {
 
   // Emit socket event
   const io = req.app.get('io');
-  const connectedUsers = req.app.get('connectedUsers');
-
+  
   // Emit to all participants except the sender
+  // We'll strip the large buffer from the socket event for efficiency
+  const socketMessage = message.toObject();
+  delete socketMessage.mediaData;
+
   conversation.participants.forEach(participantId => {
     if (participantId.toString() !== senderId.toString()) {
       io.to(participantId.toString()).emit('new_message', {
         conversationId: conversation._id,
-        message: message
+        message: socketMessage
       });
     }
   });
@@ -259,10 +277,14 @@ const sendMessage = asyncHandler(async (req, res) => {
   const recipients = conversation.participants.filter(p => p.toString() !== senderId.toString());
   
   recipients.forEach(recipientId => {
+    const notificationText = mediaType && mediaType !== 'none' 
+      ? `Sent an ${mediaType}` 
+      : text;
+
     sendPushNotification(
       recipientId,
       conversation.isGroup ? `${conversation.name}: ${req.user.username}` : `New message from ${req.user.username}`,
-      text,
+      notificationText,
       { conversationId: conversation._id }
     );
 
@@ -272,7 +294,48 @@ const sendMessage = asyncHandler(async (req, res) => {
     }
   });
 
-  res.status(201).json(message);
+  res.status(201).json(socketMessage);
+});
+
+// @desc    Upload message media
+// @route   POST /api/conversations/upload
+// @access  Private
+const uploadMessageMedia = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    res.status(400);
+    throw new Error('Please upload a file');
+  }
+
+  // Return the data directly to be saved in the sendMessage call
+  // We return the buffer as a base64 string for the client to hold temporarily
+  res.json({ 
+    mediaData: req.file.buffer.toString('base64'),
+    fileName: req.file.originalname,
+    fileSize: req.file.size,
+    fileMimeType: req.file.mimetype,
+  });
+});
+
+// @desc    Get message media from MongoDB
+// @route   GET /api/conversations/messages/:id/media
+// @access  Private
+const getMessageMedia = asyncHandler(async (req, res) => {
+  const message = await Message.findById(req.params.id);
+
+  if (!message || !message.mediaData) {
+    res.status(404);
+    throw new Error('Media not found');
+  }
+
+  // Security check: is the user part of this conversation?
+  const conversation = await Conversation.findById(message.conversationId);
+  if (!conversation.participants.some(p => p.equals(req.user._id))) {
+    res.status(403);
+    throw new Error('Not authorized to access this media');
+  }
+
+  res.set('Content-Type', message.fileMimeType || 'application/octet-stream');
+  res.send(message.mediaData);
 });
 
 // Helper to share code with recipient
@@ -457,4 +520,6 @@ module.exports = {
   leaveGroupChat,
   deleteGroupChat,
   markMessagesAsRead,
+  uploadMessageMedia,
+  getMessageMedia,
 };

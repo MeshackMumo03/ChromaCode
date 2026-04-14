@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
 const { 
   startConversation, 
   getConversations, 
@@ -9,14 +11,31 @@ const {
   updateGroupChat,
   leaveGroupChat,
   deleteGroupChat,
-  markMessagesAsRead
+  markMessagesAsRead,
+  uploadMessageMedia,
+  getMessageMedia
 } = require('../controllers/conversationController');
+
+// Configure multer for local storage
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  }
+});
+
+const upload = multer({ storage });
+const memoryUpload = multer({ storage: multer.memoryStorage() });
 
 router.route('/')
   .post(startConversation)
   .get(getConversations);
 
 router.post('/group', createGroupChat);
+router.route('/upload').post(memoryUpload.single('file'), uploadMessageMedia);
+router.route('/messages/:id/media').get(getMessageMedia);
 
 router.get('/:id', getConversation);
 router.put('/:id/read', markMessagesAsRead);

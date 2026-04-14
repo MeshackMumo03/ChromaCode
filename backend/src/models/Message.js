@@ -21,10 +21,22 @@ const MessageSchema = new mongoose.Schema({
   },
   mediaType: {
     type: String,
-    enum: ['none', 'image', 'voice'],
+    enum: ['none', 'image', 'voice', 'document', 'sticker', 'video', 'audio'],
     default: 'none',
   },
   mediaUrl: {
+    type: String,
+  },
+  mediaData: {
+    type: Buffer,
+  },
+  fileName: {
+    type: String,
+  },
+  fileSize: {
+    type: Number,
+  },
+  fileMimeType: {
     type: String,
   },
   readBy: [{
