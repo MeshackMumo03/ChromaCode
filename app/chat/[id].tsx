@@ -63,6 +63,10 @@ export default function ChatScreen() {
   const [hasMore, setHasMore] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [playingId, setPlayingId] = useState<string | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const colorScheme = useColorScheme();
@@ -304,6 +308,7 @@ export default function ChatScreen() {
           text: '',
           mediaType,
           mediaUrl: mediaData.mediaUrl,
+          mediaData: mediaData.mediaData,
           fileName: mediaData.fileName,
           fileSize: mediaData.fileSize,
           fileMimeType: mediaData.fileMimeType,
@@ -352,6 +357,76 @@ export default function ChatScreen() {
       }
     } catch (error) {
       console.error('Document picker error:', error);
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Mic permission is required to record audio.');
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      setRecording(recording);
+      setIsRecording(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch (err) {
+      console.error('Failed to start recording', err);
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!recording) return;
+    setIsRecording(false);
+    setRecording(null);
+    try {
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      if (uri) {
+        const mediaData = await uploadFile(uri, 'voice_message.m4a', 'audio/m4a');
+        if (mediaData) {
+          handleSendMedia(mediaData, 'voice');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to stop recording', error);
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const playSound = async (uri: string, messageId: string) => {
+    try {
+      if (sound) {
+        await sound.unloadAsync();
+      }
+
+      const fullUri = uri.startsWith('http') 
+        ? uri 
+        : `${BASE_URL.replace('/api', '')}${uri.startsWith('/') ? '' : '/'}${uri}`;
+
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: fullUri },
+        { shouldPlay: true }
+      );
+      setSound(newSound);
+      setPlayingId(messageId);
+
+      newSound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          setPlayingId(null);
+        }
+      });
+    } catch (error) {
+      console.error('Error playing sound:', error);
     }
   };
 
@@ -512,6 +587,39 @@ export default function ChatScreen() {
                           <StatusIcon status={item.status} isMyMessage={isMyMessage} />
                         </View>
                       </TouchableOpacity>
+                    ) : (item.mediaType === 'voice' || item.mediaType === 'audio') ? (
+                      <TouchableOpacity 
+                        style={styles.voiceContainer}
+                        onPress={() => playSound(item.mediaUrl || '', item._id)}
+                      >
+                        <Ionicons 
+                          name={playingId === item._id ? "pause" : "play"} 
+                          size={24} 
+                          color={isMyMessage ? '#fff' : colors.tint} 
+                        />
+                        <View style={styles.voiceWaveform}>
+                          {/* Simplified waveform representation */}
+                          {[1,2,3,4,5,6,7,8,9,10].map(i => (
+                            <View 
+                              key={i} 
+                              style={[
+                                styles.waveformBar, 
+                                { 
+                                  height: Math.random() * 20 + 5, 
+                                  backgroundColor: isMyMessage ? '#fff' : colors.tint,
+                                  opacity: playingId === item._id ? 1 : 0.5
+                                }
+                              ]} 
+                            />
+                          ))}
+                        </View>
+                        <View style={styles.timestampRow}>
+                          <ThemedText style={[styles.timestamp, { color: isMyMessage ? 'rgba(255,255,255,0.8)' : colors.icon }]}>
+                            {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </ThemedText>
+                          <StatusIcon status={item.status} isMyMessage={isMyMessage} />
+                        </View>
+                      </TouchableOpacity>
                     ) : (
                       <>
                         <ThemedText style={[styles.messageText, { color: isMyMessage ? (colorScheme === 'light' ? '#fff' : colors.background) : colors.text }]}>{item.text}</ThemedText>
@@ -551,18 +659,36 @@ export default function ChatScreen() {
             <TouchableOpacity onPress={() => setShowAttachMenu(true)} style={styles.attachButton}>
               <Ionicons name="add" size={28} color={colors.tint} />
             </TouchableOpacity>
-            <TextInput
-              style={[styles.input, { borderColor: colors.icon, backgroundColor: colors.background, color: colors.text }]}
-              value={newMessage}
-              onChangeText={(text) => { setNewMessage(text); handleTyping(); }}
-              placeholder="Type a message..."
-              placeholderTextColor={colors.icon}
-              multiline
-            />
+            
+            {isRecording ? (
+              <View style={styles.recordingContainer}>
+                <View style={styles.recordingDot} />
+                <ThemedText style={styles.recordingText}>Recording...</ThemedText>
+                <TouchableOpacity onPress={stopRecording} style={styles.stopRecordingButton}>
+                  <ThemedText style={{ color: '#ff3b30', fontWeight: 'bold' }}>Stop & Send</ThemedText>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TextInput
+                style={[styles.input, { borderColor: colors.icon, backgroundColor: colors.background, color: colors.text }]}
+                value={newMessage}
+                onChangeText={(text) => { setNewMessage(text); handleTyping(); }}
+                placeholder="Type a message..."
+                placeholderTextColor={colors.icon}
+                multiline
+              />
+            )}
+
             {uploading ? (
               <ActivityIndicator size="small" color={colors.tint} style={{ marginHorizontal: 10 }} />
-            ) : (
-              <StyledButton title="Send" onPress={handleSendMessage} style={styles.sendButton} />
+            ) : isRecording ? null : (
+              newMessage.trim() ? (
+                <StyledButton title="Send" onPress={handleSendMessage} style={styles.sendButton} />
+              ) : (
+                <TouchableOpacity onPress={startRecording} style={styles.micButton}>
+                  <Ionicons name="mic" size={28} color={colors.tint} />
+                </TouchableOpacity>
+              )
             )}
           </View>
         </SafeAreaView>
@@ -583,11 +709,11 @@ export default function ChatScreen() {
                   </View>
                   <ThemedText style={styles.attachText}>Document</ThemedText>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.attachOption} onPress={() => { setShowAttachMenu(false); Alert.alert('Coming Soon', 'Voice messages are coming soon!'); }}>
+                <TouchableOpacity style={styles.attachOption} onPress={() => { setShowAttachMenu(false); startRecording(); }}>
                   <View style={[styles.attachIconContainer, { backgroundColor: '#f5a623' }]}>
                     <Ionicons name="mic" size={24} color="#fff" />
                   </View>
-                  <ThemedText style={styles.attachText}>Audio</ThemedText>
+                  <ThemedText style={styles.attachText}>Audio Message</ThemedText>
                 </TouchableOpacity>
               </View>
             </Pressable>
@@ -642,5 +768,13 @@ const styles = StyleSheet.create({
   attachMenu: { width: '100%', padding: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20, position: 'absolute', bottom: 0 },
   attachOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15 },
   attachIconContainer: { width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
-  attachText: { fontSize: 16, fontWeight: '600' }
+  attachText: { fontSize: 16, fontWeight: '600' },
+  voiceContainer: { flexDirection: 'row', alignItems: 'center', padding: 10, minWidth: 150 },
+  voiceWaveform: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', marginHorizontal: 10, height: 30 },
+  waveformBar: { width: 3, borderRadius: 1.5 },
+  recordingContainer: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,59,48,0.1)', borderRadius: 20, paddingHorizontal: 15, height: 40, marginRight: 10 },
+  recordingDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#ff3b30', marginRight: 10 },
+  recordingText: { flex: 1, color: '#ff3b30', fontWeight: 'bold', fontSize: 14 },
+  stopRecordingButton: { paddingVertical: 5, paddingHorizontal: 10 },
+  micButton: { padding: 5, marginHorizontal: 5 }
 });
