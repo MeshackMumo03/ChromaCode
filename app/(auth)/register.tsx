@@ -49,6 +49,13 @@ export default function RegisterScreen() {
   const handleGoogleSignIn = async () => {
     try {
       await GoogleSignin.hasPlayServices();
+      
+      try {
+        await GoogleSignin.signOut();
+      } catch (e) {
+        // Ignore errors
+      }
+
       const response = await GoogleSignin.signIn();
       
       // Handle both v13 (response.data.user) and older versions (response.user)

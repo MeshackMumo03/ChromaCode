@@ -42,6 +42,15 @@ export default function LoginScreen() {
   const handleGoogleSignIn = async () => {
     try {
       await GoogleSignin.hasPlayServices();
+      
+      // To ensure the user is prompted to select an account, we can sign out first
+      // This is common in apps where users might want to switch accounts frequently
+      try {
+        await GoogleSignin.signOut();
+      } catch (e) {
+        // Ignore errors from sign out if already signed out
+      }
+
       const response = await GoogleSignin.signIn();
       
       // Handle both v13 (response.data.user) and older versions (response.user)

@@ -7,11 +7,16 @@ const protect = asyncHandler(async (req, res, next) => {
     let token;
 
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+        token = req.headers.authorization.split(' ')[1];
         console.log('Authorization header present.');
+    } else if (req.query.token) {
+        token = req.query.token;
+        console.log('Token query param present.');
+    }
+
+    if (token) {
         try {
-            // Get token from header
-            token = req.headers.authorization.split(' ')[1];
-            console.log('Token extracted:', token ? 'YES' : 'NO');
+            console.log('Token extracted:', 'YES');
 
             // Verify token
             console.log('JWT_SECRET available:', process.env.JWT_SECRET ? 'YES' : 'NO');
@@ -28,10 +33,6 @@ const protect = asyncHandler(async (req, res, next) => {
             res.status(401).json({ message: 'Not authorized, token failed' });
         }
     } else {
-        console.log('Authorization header NOT present or malformed.');
-    }
-
-    if (!token) {
         console.log('No token found after processing. Sending 401.');
         res.status(401).json({ message: 'Not authorized, no token' });
     }

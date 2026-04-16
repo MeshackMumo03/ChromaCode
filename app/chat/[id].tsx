@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, TextInput, FlatList, Alert, View, Platform, KeyboardAvoidingView, Modal, Pressable, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { StyleSheet, TextInput, FlatList, Alert, View, Platform, KeyboardAvoidingView, Modal, Pressable, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
@@ -10,7 +10,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getBaseUrl } from '@/constants/api';
 import { StyledButton } from '@/components/StyledButton';
 import * as Haptics from 'expo-haptics';
-import { Audio } from 'expo-av';
+import { Audio, Video } from 'expo-av';
 import { useSocket } from '@/hooks/useSocket';
 import { useConversations } from '@/hooks/useConversations';
 import { Image as ExpoImage } from 'expo-image';
@@ -67,6 +67,7 @@ export default function ChatScreen() {
   const [isRecording, setIsRecording] = useState(false);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [loadingSoundId, setLoadingSoundId] = useState<string | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const colorScheme = useColorScheme();
@@ -409,19 +410,31 @@ export default function ChatScreen() {
         await sound.unloadAsync();
       }
 
+      setLoadingSoundId(messageId);
+
       const fullUri = uri.startsWith('http') 
         ? uri 
         : `${BASE_URL.replace('/api', '')}${uri.startsWith('/') ? '' : '/'}${uri}`;
+
+      // Set audio mode for playback
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        shouldDuckAndroid: true,
+      });
 
       const { sound: newSound } = await Audio.Sound.createAsync(
         { 
           uri: fullUri,
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         },
-        { shouldPlay: true }
+        { shouldPlay: true, volume: 1.0 }
       );
+      
       setSound(newSound);
       setPlayingId(messageId);
+      setLoadingSoundId(null);
 
       newSound.setOnPlaybackStatusUpdate((status) => {
         if (status.isLoaded && status.didJustFinish) {
@@ -430,6 +443,29 @@ export default function ChatScreen() {
       });
     } catch (error) {
       console.error('Error playing sound:', error);
+      setLoadingSoundId(null);
+      Alert.alert('Error', 'Could not play audio');
+    }
+  };
+
+  const openDocument = async (uri: string, fileName: string) => {
+    const fullUri = uri.startsWith('http') 
+        ? uri 
+        : `${BASE_URL.replace('/api', '')}${uri.startsWith('/') ? '' : '/'}${uri}`;
+    
+    // For documents, we might need a token in the query for Linking to work
+    const urlWithToken = `${fullUri}${fullUri.includes('?') ? '&' : '?'}token=${token}`;
+    
+    try {
+      const supported = await Linking.canOpenURL(urlWithToken);
+      if (supported) {
+        await Linking.openURL(urlWithToken);
+      } else {
+        Alert.alert('Error', 'Don\'t know how to open this URL: ' + urlWithToken);
+      }
+    } catch (error) {
+      console.error('Error opening document:', error);
+      Alert.alert('Error', 'Could not open document');
     }
   };
 
@@ -574,7 +610,7 @@ export default function ChatScreen() {
                     ) : item.mediaType === 'document' ? (
                       <TouchableOpacity 
                         style={styles.documentContainer}
-                        onPress={() => Alert.alert('Open Document', `Do you want to open ${item.fileName}?`)}
+                        onPress={() => openDocument(item.mediaUrl || '', item.fileName || 'document')}
                       >
                         <Ionicons name="document-text" size={30} color={isMyMessage ? '#fff' : colors.tint} />
                         <View style={styles.documentInfo}>
@@ -592,16 +628,47 @@ export default function ChatScreen() {
                           <StatusIcon status={item.status} isMyMessage={isMyMessage} />
                         </View>
                       </TouchableOpacity>
+                    ) : item.mediaType === 'video' ? (
+                      <View style={styles.videoContainer}>
+                        <Video
+                          source={{ 
+                            uri: item.mediaUrl?.startsWith('http') 
+                              ? item.mediaUrl 
+                              : (item.mediaUrl?.startsWith('/api') 
+                                  ? `${BASE_URL.replace('/api', '')}${item.mediaUrl}` 
+                                  : `${BASE_URL.replace('/api', '')}${item.mediaUrl?.startsWith('/') ? '' : '/'}${item.mediaUrl}`),
+                            headers: token ? { Authorization: `Bearer ${token}` } : {}
+                          }}
+                          rate={1.0}
+                          volume={1.0}
+                          isMuted={false}
+                          resizeMode={Video.RESIZE_MODE_CONTAIN}
+                          shouldPlay={false}
+                          isLooping={false}
+                          useNativeControls
+                          style={styles.messageVideo}
+                        />
+                        <View style={[styles.timestampRow, styles.mediaTimestamp]}>
+                          <ThemedText style={styles.timestamp}>
+                            {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </ThemedText>
+                          <StatusIcon status={item.status} isMyMessage={isMyMessage} />
+                        </View>
+                      </View>
                     ) : (item.mediaType === 'voice' || item.mediaType === 'audio') ? (
                       <TouchableOpacity 
                         style={styles.voiceContainer}
                         onPress={() => playSound(item.mediaUrl || '', item._id)}
                       >
-                        <Ionicons 
-                          name={playingId === item._id ? "pause" : "play"} 
-                          size={24} 
-                          color={isMyMessage ? '#fff' : colors.tint} 
-                        />
+                        {loadingSoundId === item._id ? (
+                          <ActivityIndicator size="small" color={isMyMessage ? '#fff' : colors.tint} />
+                        ) : (
+                          <Ionicons 
+                            name={playingId === item._id ? "pause" : "play"} 
+                            size={24} 
+                            color={isMyMessage ? '#fff' : colors.tint} 
+                          />
+                        )}
                         <View style={styles.voiceWaveform}>
                           {/* Simplified waveform representation */}
                           {[1,2,3,4,5,6,7,8,9,10].map(i => (
@@ -747,6 +814,8 @@ const styles = StyleSheet.create({
   theirMessage: { alignSelf: 'flex-start', borderBottomLeftRadius: 4 },
   messageText: { fontSize: 16, lineHeight: 22 },
   messageImage: { width: '100%', aspectRatio: 1, borderRadius: 10 },
+  videoContainer: { width: '100%', aspectRatio: 1, borderRadius: 10, overflow: 'hidden' },
+  messageVideo: { width: '100%', height: '100%' },
   stickerContainer: { padding: 5, backgroundColor: 'transparent' },
   stickerImage: { width: 120, height: 120 },
   mediaTimestamp: { position: 'absolute', bottom: 5, right: 10, backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 5, borderRadius: 10 },
