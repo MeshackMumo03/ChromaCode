@@ -42,12 +42,19 @@ export default function LoginScreen() {
   const handleGoogleSignIn = async () => {
     try {
       await GoogleSignin.hasPlayServices();
-      const userInfo = await GoogleSignin.signIn();
+      const response = await GoogleSignin.signIn();
       
+      // Handle both v13 (response.data.user) and older versions (response.user)
+      const user = response.data ? response.data.user : (response as any).user;
+      
+      if (!user) {
+        throw new Error('No user data returned from Google');
+      }
+
       const success = await googleLogin({
-        email: userInfo.user.email,
-        username: userInfo.user.name,
-        profilePicture: userInfo.user.photo,
+        email: user.email,
+        username: user.name,
+        profilePicture: user.photo,
       });
 
       if (success) {
@@ -110,7 +117,7 @@ export default function LoginScreen() {
           </TouchableOpacity>
 
           <ThemedText style={[styles.link, { color: colors.tint }]} onPress={() => router.push('/register')}>
-            Don't have an account? Sign Up
+            Don&apos;t have an account? Sign Up
           </ThemedText>
         </ThemedView>
       </ScrollView>

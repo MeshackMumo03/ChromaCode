@@ -414,7 +414,10 @@ export default function ChatScreen() {
         : `${BASE_URL.replace('/api', '')}${uri.startsWith('/') ? '' : '/'}${uri}`;
 
       const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri: fullUri },
+        { 
+          uri: fullUri,
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        },
         { shouldPlay: true }
       );
       setSound(newSound);
@@ -534,7 +537,8 @@ export default function ChatScreen() {
                               ? item.mediaUrl 
                               : (item.mediaUrl?.startsWith('/api') 
                                   ? `${BASE_URL.replace('/api', '')}${item.mediaUrl}` 
-                                  : `${BASE_URL.replace('/api', '')}${item.mediaUrl?.startsWith('/') ? '' : '/'}${item.mediaUrl}`) 
+                                  : `${BASE_URL.replace('/api', '')}${item.mediaUrl?.startsWith('/') ? '' : '/'}${item.mediaUrl}`),
+                            headers: token ? { Authorization: `Bearer ${token}` } : {}
                           }} 
                           style={styles.messageImage} 
                           contentFit="cover"
@@ -554,7 +558,8 @@ export default function ChatScreen() {
                               ? item.mediaUrl 
                               : (item.mediaUrl?.startsWith('/api') 
                                   ? `${BASE_URL.replace('/api', '')}${item.mediaUrl}` 
-                                  : `${BASE_URL.replace('/api', '')}${item.mediaUrl?.startsWith('/') ? '' : '/'}${item.mediaUrl}`) 
+                                  : `${BASE_URL.replace('/api', '')}${item.mediaUrl?.startsWith('/') ? '' : '/'}${item.mediaUrl}`),
+                            headers: token ? { Authorization: `Bearer ${token}` } : {}
                           }} 
                           style={styles.stickerImage} 
                           contentFit="contain"

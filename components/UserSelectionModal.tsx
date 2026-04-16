@@ -61,7 +61,7 @@ export default function UserSelectionModal({ modalVisible, onClose, onUserSelect
     >
       <View style={styles.centeredView}>
         <ThemedView style={styles.modalView}>
-          <ThemedText style={styles.modalText}>Select a user to send "{code?.name}" to:</ThemedText>
+          <ThemedText style={styles.modalText}>Select a user to send &quot;{code?.name}&quot; to:</ThemedText>
           <FlatList
             data={users}
             keyExtractor={(item) => item._id}
