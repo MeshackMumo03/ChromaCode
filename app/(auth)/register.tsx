@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Ionicons } from "@expo/vector-icons";
 import {
   GoogleSignin,
-  statusCodes
+  statusCodes,
 } from "@react-native-google-signin/google-signin";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -196,15 +196,10 @@ export default function RegisterScreen() {
             </ThemedText>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => router.push("/login")}
-            style={styles.linkContainer}
-          >
+          <TouchableOpacity onPress={() => router.push('/login')} style={styles.linkContainer}>
             <ThemedText style={styles.linkText}>
-              Already have an account?{" "}
-              <Text style={{ color: colors.tint, fontWeight: "bold" }}>
-                Login
-              </Text>
+              Already have an account?{' '}
+              <Text style={{ color: colors.tint, fontWeight: 'bold' }}>Login</Text>
             </ThemedText>
           </TouchableOpacity>
         </ThemedView>
