@@ -52,7 +52,7 @@ router.delete('/:id', async (req, res) => {
             throw new Error('User not authorized');
         }
 
-        await item.remove();
+        await item.deleteOne();
         res.json({ message: 'Item deleted' });
     } catch (error) {
         console.error('Error deleting history item:', error);

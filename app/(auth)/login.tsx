@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, TextInput, Alert, Image, ScrollView, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, TextInput, Alert, Image, ScrollView, View, TouchableOpacity, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StyledButton } from '@/components/StyledButton';
 import { ThemedView } from '@/components/themed-view';
@@ -125,9 +125,12 @@ export default function LoginScreen() {
             <ThemedText style={styles.googleButtonText}>Continue with Google</ThemedText>
           </TouchableOpacity>
 
-          <ThemedText style={[styles.link, { color: colors.tint }]} onPress={() => router.push('/register')}>
-            Don&apos;t have an account? Sign Up
-          </ThemedText>
+          <TouchableOpacity onPress={() => router.push('/register')} style={styles.linkContainer}>
+            <ThemedText style={styles.linkText}>
+              Don't have an account?{' '}
+              <Text style={{ color: colors.tint, fontWeight: 'bold' }}>Sign Up</Text>
+            </ThemedText>
+          </TouchableOpacity>
         </ThemedView>
       </ScrollView>
     </SafeAreaView>
@@ -196,9 +199,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  link: {
+  linkContainer: {
     marginTop: 10,
+    padding: 10,
+  },
+  linkText: {
     fontSize: 16,
-    fontWeight: '600',
   },
 });

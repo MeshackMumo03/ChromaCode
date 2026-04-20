@@ -1,55 +1,77 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, TextInput, Alert, Image, ScrollView, View, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { StyledButton } from '@/components/StyledButton';
-import { ThemedView } from '@/components/themed-view';
-import { ThemedText } from '@/components/themed-text';
-import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'expo-router';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { GoogleSignin, GoogleSigninButton, statusCodes } from '@react-native-google-signin/google-signin';
-import { Ionicons } from '@expo/vector-icons';
+import { StyledButton } from "@/components/StyledButton";
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useAuth } from "@/hooks/useAuth";
+import { Ionicons } from "@expo/vector-icons";
+import {
+  GoogleSignin,
+  statusCodes
+} from "@react-native-google-signin/google-signin";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function RegisterScreen() {
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const { register, googleLogin, isLoading } = useAuth();
   const router = useRouter();
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const colors = Colors[colorScheme ?? "light"];
 
   useEffect(() => {
     GoogleSignin.configure({
-      webClientId: '292338562017-1iil6e508ucq148ogasibc5bql6r3uf2.apps.googleusercontent.com',
+      webClientId:
+        "292338562017-1iil6e508ucq148ogasibc5bql6r3uf2.apps.googleusercontent.com",
       offlineAccess: true,
     });
   }, []);
 
   const handleRegister = async () => {
     if (!username || !email || !password) {
-      Alert.alert('Error', 'Please fill in all fields.');
+      Alert.alert("Error", "Please fill in all fields.");
       return;
     }
 
     const result = await register(username, email, password);
     if (result.success) {
       if (result.needsVerification) {
-        Alert.alert('Success', 'Verification code sent! Please check your email.');
-        router.push({ pathname: '/verify-email', params: { email: result.email } });
+        Alert.alert(
+          "Success",
+          "Verification code sent! Please check your email.",
+        );
+        router.push({
+          pathname: "/verify-email",
+          params: { email: result.email },
+        });
       } else {
-        router.replace('/(tabs)');
+        router.replace("/(tabs)");
       }
     } else {
-      Alert.alert('Registration Failed', 'User already exists or network error.');
+      Alert.alert(
+        "Registration Failed",
+        "User already exists or network error.",
+      );
     }
   };
 
   const handleGoogleSignIn = async () => {
     try {
       await GoogleSignin.hasPlayServices();
-      
+
       try {
         await GoogleSignin.signOut();
       } catch (e) {
@@ -57,12 +79,12 @@ export default function RegisterScreen() {
       }
 
       const response = await GoogleSignin.signIn();
-      
+
       // Handle both v13 (response.data.user) and older versions (response.user)
       const user = response.data ? response.data.user : (response as any).user;
-      
+
       if (!user) {
-        throw new Error('No user data returned from Google');
+        throw new Error("No user data returned from Google");
       }
 
       const success = await googleLogin({
@@ -72,9 +94,9 @@ export default function RegisterScreen() {
       });
 
       if (success) {
-        Alert.alert('Success', 'Logged in with Google!');
+        Alert.alert("Success", "Logged in with Google!");
       } else {
-        Alert.alert('Error', 'Failed to authenticate with Google');
+        Alert.alert("Error", "Failed to authenticate with Google");
       }
     } catch (error: any) {
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
@@ -82,8 +104,8 @@ export default function RegisterScreen() {
       } else if (error.code === statusCodes.IN_PROGRESS) {
         // operation in progress
       } else {
-        console.error('Google Sign-In Error:', error);
-        Alert.alert('Error', 'Google Sign-In failed');
+        console.error("Google Sign-In Error:", error);
+        Alert.alert("Error", "Google Sign-In failed");
       }
     }
   };
@@ -92,11 +114,21 @@ export default function RegisterScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <ThemedView style={styles.container}>
-          <Image source={require('@/assets/images/icon.png')} style={styles.logo} />
+          <Image
+            source={require("@/assets/images/icon.png")}
+            style={styles.logo}
+          />
           <ThemedText style={styles.title}>Create Account</ThemedText>
-          
+
           <TextInput
-            style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: colors.background }]}
+            style={[
+              styles.input,
+              {
+                color: colors.text,
+                borderColor: colors.icon,
+                backgroundColor: colors.background,
+              },
+            ]}
             placeholder="Username"
             placeholderTextColor={colors.icon}
             value={username}
@@ -104,7 +136,14 @@ export default function RegisterScreen() {
             autoCapitalize="none"
           />
           <TextInput
-            style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: colors.background }]}
+            style={[
+              styles.input,
+              {
+                color: colors.text,
+                borderColor: colors.icon,
+                backgroundColor: colors.background,
+              },
+            ]}
             placeholder="Email"
             placeholderTextColor={colors.icon}
             value={email}
@@ -113,15 +152,27 @@ export default function RegisterScreen() {
             autoCapitalize="none"
           />
           <TextInput
-            style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: colors.background }]}
+            style={[
+              styles.input,
+              {
+                color: colors.text,
+                borderColor: colors.icon,
+                backgroundColor: colors.background,
+              },
+            ]}
             placeholder="Password"
             placeholderTextColor={colors.icon}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
           />
-          
-          <StyledButton title="Sign Up" onPress={handleRegister} isLoading={isLoading} style={styles.button} />
+
+          <StyledButton
+            title="Sign Up"
+            onPress={handleRegister}
+            isLoading={isLoading}
+            style={styles.button}
+          />
 
           <View style={styles.dividerContainer}>
             <View style={[styles.divider, { backgroundColor: colors.icon }]} />
@@ -129,18 +180,31 @@ export default function RegisterScreen() {
             <View style={[styles.divider, { backgroundColor: colors.icon }]} />
           </View>
 
-          <TouchableOpacity 
-            style={[styles.googleButton, { borderColor: colors.icon }]} 
+          <TouchableOpacity
+            style={[styles.googleButton, { borderColor: colors.icon }]}
             onPress={handleGoogleSignIn}
             disabled={isLoading}
           >
-            <Ionicons name="logo-google" size={20} color={colors.text} style={{ marginRight: 10 }} />
-            <ThemedText style={styles.googleButtonText}>Continue with Google</ThemedText>
+            <Ionicons
+              name="logo-google"
+              size={20}
+              color={colors.text}
+              style={{ marginRight: 10 }}
+            />
+            <ThemedText style={styles.googleButtonText}>
+              Continue with Google
+            </ThemedText>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => router.push('/login')} style={styles.linkContainer}>
+          <TouchableOpacity
+            onPress={() => router.push("/login")}
+            style={styles.linkContainer}
+          >
             <ThemedText style={styles.linkText}>
-              Already have an account? <ThemedText style={{ color: colors.tint, fontWeight: 'bold' }}>Login</ThemedText>
+              Already have an account?{" "}
+              <Text style={{ color: colors.tint, fontWeight: "bold" }}>
+                Login
+              </Text>
             </ThemedText>
           </TouchableOpacity>
         </ThemedView>
@@ -155,8 +219,8 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
     paddingBottom: 40, // Extra padding at bottom
   },
@@ -167,11 +231,11 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 30,
   },
   input: {
-    width: '100%',
+    width: "100%",
     padding: 15,
     borderWidth: 1,
     borderRadius: 12,
@@ -179,14 +243,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   button: {
-    width: '100%',
+    width: "100%",
     marginTop: 10,
   },
   dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginVertical: 25,
-    width: '100%',
+    width: "100%",
   },
   divider: {
     flex: 1,
@@ -199,18 +263,18 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   googleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     height: 55,
-    width: '100%',
+    width: "100%",
     borderWidth: 1,
     borderRadius: 12,
     marginBottom: 30, // More space after google button
   },
   googleButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   linkContainer: {
     marginTop: 10,
