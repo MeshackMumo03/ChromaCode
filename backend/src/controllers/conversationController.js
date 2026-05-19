@@ -79,21 +79,19 @@ const startConversation = asyncHandler(async (req, res) => {
   conversation.updatedAt = new Date();
   await conversation.save();
 
-  // Emit socket event
+  // Emit socket event to ALL participants (including sender for sync)
   const io = req.app.get('io');
   
   // For real-time response, we don't want to send the entire buffer back if it's large
   const socketMessage = message.toObject();
   delete socketMessage.mediaData;
 
-  // Emit to all participants except the sender
+  // Emit to all participants (including the sender for conversation list sync)
   conversation.participants.forEach(participantId => {
-    if (participantId.toString() !== senderId.toString()) {
-      io.to(participantId.toString()).emit('new_message', {
-        conversationId: conversation._id,
-        message: socketMessage
-      });
-    }
+    io.to(participantId.toString()).emit('new_message', {
+      conversationId: conversation._id,
+      message: socketMessage
+    });
   });
 
   // Send push notification to recipient
@@ -285,16 +283,14 @@ const sendMessage = asyncHandler(async (req, res) => {
   conversation.updatedAt = new Date();
   await conversation.save();
 
-  // Emit socket event
+  // Emit socket event to ALL participants (including sender for sync)
   const io = req.app.get('io');
   
   conversation.participants.forEach(participantId => {
-    if (participantId.toString() !== senderId.toString()) {
-      io.to(participantId.toString()).emit('new_message', {
-        conversationId: conversation._id,
-        message: socketMessage
-      });
-    }
+    io.to(participantId.toString()).emit('new_message', {
+      conversationId: conversation._id,
+      message: socketMessage
+    });
   });
 
   // Send push notification to other participants

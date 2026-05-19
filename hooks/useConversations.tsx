@@ -118,11 +118,13 @@ export function ConversationsProvider({ children }: { children: React.ReactNode 
   useEffect(() => {
     if (socket) {
       const handleNewMessage = (data: any) => {
+        console.log('--- Socket: new_message received ---', data.message.text || data.message.mediaType);
         setConversations(prev => {
           const updated = [...prev];
           const index = updated.findIndex(c => c._id === data.conversationId);
           
           if (index !== -1) {
+            console.log('Updating existing conversation in list:', data.conversationId);
             const updatedConv = {
               ...updated[index],
               lastMessage: data.message,
@@ -134,6 +136,7 @@ export function ConversationsProvider({ children }: { children: React.ReactNode 
             AsyncStorage.setItem(CACHE_KEY_CONVERSATIONS, JSON.stringify(result.slice(0, 50)));
             return result;
           } else {
+            console.log('Conversation not found in list, fetching all...');
             fetchConversations(); // Fetch new conversation
             return prev;
           }
