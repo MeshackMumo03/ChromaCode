@@ -39,6 +39,14 @@ const sendVerificationEmail = async (email, code) => {
   }
 };
 
+// List of common disposable email domains to block bots
+const DISPOSABLE_EMAIL_DOMAINS = [
+  'yopmail.com', 'mailinator.com', 'tempmail.com', 'guerrillamail.com', 
+  'sharklasers.com', 'dispostable.com', '10minutemail.com', 'trashmail.com',
+  'maildrop.cc', 'getnada.com', 'mintemail.com', 'protonmail.ch', // Some people use proton for bots, but it's legitimate too. Let's stick to obvious temp ones.
+  'maildrop.cc', 'temp-mail.org', 'fake-mail.com'
+];
+
 // @desc    Register new user
 // @route   POST /api/users/register
 // @access  Public
@@ -48,6 +56,20 @@ const registerUser = asyncHandler(async (req, res) => {
     if (!username || !email || !password) {
         res.status(400);
         throw new Error('Please add all fields');
+    }
+
+    // Basic email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        res.status(400);
+        throw new Error('Please provide a valid email address');
+    }
+
+    // Check for disposable/bot email domains
+    const domain = email.split('@')[1].toLowerCase();
+    if (DISPOSABLE_EMAIL_DOMAINS.includes(domain)) {
+        res.status(400);
+        throw new Error('Registration from this email provider is not allowed. Please use a standard email service.');
     }
 
     // Check if user exists

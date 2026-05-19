@@ -11,16 +11,21 @@ const { sendPushNotification } = require('../utils/notifications');
 // @route   POST /api/conversations
 // @access  Private
 const startConversation = asyncHandler(async (req, res) => {
-  const { recipientId, text, codeId, mediaType, mediaUrl } = req.body;
+  const { recipientId, text, codeId, mediaType, mediaUrl, mediaData, fileName, fileSize, fileMimeType } = req.body;
   const senderId = req.user._id;
 
-  if (!recipientId || (!text && !mediaUrl)) {
+  if (!recipientId && !req.body.participants) {
     res.status(400);
-    throw new Error('Recipient and message content are required');
+    throw new Error('Recipient is required');
+  }
+
+  if (!text && !mediaUrl && !mediaData) {
+    res.status(400);
+    throw new Error('Message content is required');
   }
 
   const recipient = await User.findById(recipientId);
-  if (!recipient) {
+  if (!recipient && recipientId) {
     res.status(404);
     throw new Error('Recipient not found');
   }
@@ -37,15 +42,31 @@ const startConversation = asyncHandler(async (req, res) => {
 
   const validCodeId = codeId && mongoose.Types.ObjectId.isValid(codeId) ? codeId : null;
 
-  const message = await Message.create({
+  // Handle media data
+  let bufferData = null;
+  if (mediaData) {
+    bufferData = Buffer.from(mediaData, 'base64');
+  }
+
+  const message = new Message({
     conversationId: conversation._id,
     sender: senderId,
     text: text || '',
     codeId: validCodeId,
     mediaType: mediaType || 'none',
     mediaUrl: mediaUrl || '',
+    mediaData: bufferData,
+    fileName: fileName || '',
+    fileSize: fileSize || 0,
+    fileMimeType: fileMimeType || '',
     readBy: [senderId],
   });
+
+  if (message.mediaData) {
+    message.mediaUrl = `/api/conversations/messages/${message._id}/media`;
+  }
+
+  await message.save();
 
   // Populate the sender and codeId fields before sending the message in the response
   await message.populate([
@@ -61,12 +82,16 @@ const startConversation = asyncHandler(async (req, res) => {
   // Emit socket event
   const io = req.app.get('io');
   
+  // For real-time response, we don't want to send the entire buffer back if it's large
+  const socketMessage = message.toObject();
+  delete socketMessage.mediaData;
+
   // Emit to all participants except the sender
   conversation.participants.forEach(participantId => {
     if (participantId.toString() !== senderId.toString()) {
       io.to(participantId.toString()).emit('new_message', {
         conversationId: conversation._id,
-        message: message
+        message: socketMessage
       });
     }
   });
@@ -75,7 +100,7 @@ const startConversation = asyncHandler(async (req, res) => {
   sendPushNotification(
     recipientId,
     `New message from ${req.user.username}`,
-    text,
+    mediaType && mediaType !== 'none' ? `Sent an ${mediaType}` : text,
     { conversationId: conversation._id }
   );
 
@@ -86,7 +111,7 @@ const startConversation = asyncHandler(async (req, res) => {
 
   res.status(201).json({
     conversation,
-    message,
+    message: socketMessage,
   });
 });
 
@@ -225,7 +250,7 @@ const sendMessage = asyncHandler(async (req, res) => {
     bufferData = Buffer.from(mediaData, 'base64');
   }
 
-  const message = await Message.create({
+  const message = new Message({
     conversationId,
     sender: senderId,
     text: text || '',
@@ -239,6 +264,12 @@ const sendMessage = asyncHandler(async (req, res) => {
     readBy: [senderId],
   });
 
+  if (message.mediaData) {
+    message.mediaUrl = `/api/conversations/messages/${message._id}/media`;
+  }
+
+  await message.save();
+
   // Populate the sender and codeId fields before sending the message in the response
   await message.populate([
     { path: 'sender', select: 'username profilePicture' },
@@ -246,10 +277,8 @@ const sendMessage = asyncHandler(async (req, res) => {
   ]);
 
   // For real-time response, we don't want to send the entire buffer back if it's large
-  // but we should set a URL that can be used to fetch the media
-  if (message.mediaData) {
-    message.mediaUrl = `/api/conversations/messages/${message._id}/media`;
-  }
+  const socketMessage = message.toObject();
+  delete socketMessage.mediaData;
 
   // Explicitly update lastMessage and updatedAt to force sorting to work
   conversation.lastMessage = message._id;
@@ -259,11 +288,6 @@ const sendMessage = asyncHandler(async (req, res) => {
   // Emit socket event
   const io = req.app.get('io');
   
-  // Emit to all participants except the sender
-  // We'll strip the large buffer from the socket event for efficiency
-  const socketMessage = message.toObject();
-  delete socketMessage.mediaData;
-
   conversation.participants.forEach(participantId => {
     if (participantId.toString() !== senderId.toString()) {
       io.to(participantId.toString()).emit('new_message', {

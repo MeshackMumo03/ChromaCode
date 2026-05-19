@@ -38,7 +38,7 @@ interface Message {
     meaning: string;
   };
   status?: 'sent' | 'delivered' | 'read';
-  mediaType: 'none' | 'image' | 'voice' | 'document' | 'sticker' | 'video' | 'audio';
+  mediaType: 'none' | 'image' | 'voice' | 'document' | 'sticker' | 'video' | 'audio' | 'gif';
   mediaUrl?: string;
   fileName?: string;
   fileSize?: number;
@@ -329,14 +329,18 @@ export default function ChatScreen() {
     setShowAttachMenu(false);
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.All,
-      quality: 0.7,
+      quality: 1, // Keep quality high for GIFs
     });
 
     if (!result.canceled) {
       const asset = result.assets[0];
       const mediaData = await uploadFile(asset.uri, asset.fileName || 'image.jpg', asset.mimeType || 'image/jpeg');
       if (mediaData) {
-        const type = asset.type === 'video' ? 'video' : 'image';
+        let type = asset.type === 'video' ? 'video' : 'image';
+        // Better GIF detection
+        if (asset.mimeType?.includes('gif') || asset.uri.toLowerCase().endsWith('.gif')) {
+          type = 'gif';
+        }
         handleSendMedia(mediaData, type);
       }
     }
@@ -541,9 +545,9 @@ export default function ChatScreen() {
                           : (isMyMessage ? colors.tint : (colorScheme === 'light' ? '#E9E9EB' : '#333333')),
                         borderWidth: item.codeId ? 1 : 0,
                         borderColor: item.codeId ? item.codeId.color : 'transparent',
-                        padding: (item.codeId || item.mediaType === 'image' || item.mediaType === 'video') ? 0 : 10,
-                        width: (item.codeId || item.mediaType === 'image' || item.mediaType === 'video') ? '90%' : undefined,
-                        maxWidth: (item.mediaType === 'image' || item.mediaType === 'video') ? '70%' : '85%',
+                        padding: (item.codeId || item.mediaType === 'image' || item.mediaType === 'video' || item.mediaType === 'gif' || item.mediaType === 'sticker') ? 0 : 10,
+                        width: (item.codeId || item.mediaType === 'image' || item.mediaType === 'video' || item.mediaType === 'gif' || item.mediaType === 'sticker') ? '90%' : undefined,
+                        maxWidth: (item.mediaType === 'image' || item.mediaType === 'video' || item.mediaType === 'gif' || item.mediaType === 'sticker') ? '70%' : '85%',
                         alignSelf: item.codeId ? 'center' : (isMyMessage ? 'flex-end' : 'flex-start'),
                         marginVertical: item.codeId ? 10 : 2,
                         elevation: item.codeId ? 3 : 0,
@@ -565,7 +569,7 @@ export default function ChatScreen() {
                           </View>
                         </View>
                       </View>
-                    ) : item.mediaType === 'image' ? (
+                    ) : (item.mediaType === 'image' || item.mediaType === 'gif') ? (
                       <View>
                         <ExpoImage 
                           source={{ 
