@@ -1,14 +1,23 @@
 import { useState, useEffect, useRef } from 'react';
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { useAuth } from './useAuth';
 import { getBaseUrl } from '@/constants/api';
 
+// Dynamic import for Notifications to avoid side-effects in Expo Go
+let Notifications: any = null;
+if (Constants.appOwnership !== 'expo') {
+  try {
+    Notifications = require('expo-notifications');
+  } catch (e) {
+    console.log('expo-notifications not available');
+  }
+}
+
 export function useNotifications() {
   const [expoPushToken, setExpoPushToken] = useState('');
-  const [notification, setNotification] = useState<Notifications.Notification | undefined>(undefined);
+  const [notification, setNotification] = useState<any>(undefined);
   const notificationListener = useRef<any>();
   const responseListener = useRef<any>();
   const { token, user } = useAuth();
@@ -16,9 +25,8 @@ export function useNotifications() {
 
   useEffect(() => {
     // Remote notifications are completely unsupported in Expo Go for Android SDK 53+
-    // Any call to Notifications.X will likely trigger the red error box.
-    if (Constants.appOwnership === 'expo') {
-      console.log('useNotifications: Detected Expo Go. Disabling push notification logic.');
+    if (!Notifications || Constants.appOwnership === 'expo') {
+      console.log('useNotifications: Detected Expo Go or Notifications unavailable. Disabling push notification logic.');
       return;
     }
 
@@ -53,11 +61,11 @@ export function useNotifications() {
         }
       });
 
-      notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
+      notificationListener.current = Notifications.addNotificationReceivedListener((notification: any) => {
         setNotification(notification);
       });
 
-      responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
+      responseListener.current = Notifications.addNotificationResponseReceivedListener((response: any) => {
         console.log('Notification response received:', response);
       });
 
@@ -77,7 +85,7 @@ export function useNotifications() {
 
 async function registerForPushNotificationsAsync() {
   // Remote notifications are not supported in Expo Go for SDK 53+
-  if (Constants.appOwnership === 'expo') {
+  if (!Notifications || Constants.appOwnership === 'expo') {
     return null;
   }
 
@@ -89,12 +97,6 @@ async function registerForPushNotificationsAsync() {
       importance: Notifications.AndroidImportance.HIGH,
       showBadge: true,
     });
-  }
-
-  // Remote notifications are not supported in Expo Go for SDK 53+
-  if (Constants.appOwnership === 'expo') {
-    console.log('Push notifications are not supported in Expo Go. Use a development build.');
-    return;
   }
 
   if (Device.isDevice) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, memo, useCallback } from 'react';
 import { StyleSheet, TextInput, FlatList, Alert, View, Platform, KeyboardAvoidingView, Modal, Pressable, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '@/components/themed-view';
@@ -46,10 +46,220 @@ interface Message {
   timestamp: string;
 }
 
+// Optimized Message Component
+const MessageItem = memo(({ 
+  item, 
+  index, 
+  isMyMessage, 
+  showDateSeparator, 
+  formatDateSeparator, 
+  colors, 
+  colorScheme, 
+  setPeekCode, 
+  StatusIcon, 
+  token, 
+  playSound, 
+  playingId, 
+  loadingSoundId, 
+  openDocument 
+}: any) => {
+  return (
+    <View>
+      {showDateSeparator && (
+        <View style={styles.dateSeparator}>
+          <View style={[styles.dateLine, { backgroundColor: colors.icon }]} />
+          <ThemedText style={[styles.dateText, { color: colors.icon, backgroundColor: colors.background }]}>
+            {formatDateSeparator(item.timestamp)}
+          </ThemedText>
+          <View style={[styles.dateLine, { backgroundColor: colors.icon }]} />
+        </View>
+      )}
+      <View style={[styles.messageWrapper, isMyMessage ? styles.myMessageWrapper : styles.theirMessageWrapper]}>
+        {!isMyMessage && (
+          <ExpoImage source={{ uri: item.sender.profilePicture || 'https://www.gravatar.com/avatar/?d=mp' }} style={styles.messageAvatar} />
+        )}
+        <Pressable 
+          onPress={() => item.codeId && setPeekCode(item.codeId)}
+          style={[
+            styles.messageContainer,
+            isMyMessage ? styles.myMessage : styles.theirMessage,
+            { 
+              backgroundColor: item.codeId 
+                ? (colorScheme === 'dark' ? '#2A2A2A' : '#FFFFFF')
+                : (isMyMessage ? colors.tint : (colorScheme === 'light' ? '#E9E9EB' : '#333333')),
+              borderWidth: item.codeId ? 1 : 0,
+              borderColor: item.codeId ? item.codeId.color : 'transparent',
+              padding: (item.codeId || item.mediaType === 'image' || item.mediaType === 'video' || item.mediaType === 'gif' || item.mediaType === 'sticker') ? 0 : 10,
+              width: (item.codeId || item.mediaType === 'image' || item.mediaType === 'video' || item.mediaType === 'gif' || item.mediaType === 'sticker') ? '90%' : undefined,
+              maxWidth: (item.mediaType === 'image' || item.mediaType === 'video' || item.mediaType === 'gif' || item.mediaType === 'sticker') ? '70%' : '85%',
+              alignSelf: item.codeId ? 'center' : (isMyMessage ? 'flex-end' : 'flex-start'),
+              marginVertical: item.codeId ? 10 : 2,
+              elevation: item.codeId ? 3 : 0,
+              overflow: 'hidden',
+            }
+          ]}
+        >
+          {item.codeId ? (
+            <View style={styles.richMessageCard}>
+              <View style={[styles.colorSideBar, { backgroundColor: item.codeId.color }]} />
+              <View style={styles.richContent}>
+                <ThemedText style={[styles.codeNameLabel, { color: item.codeId.color }]}>{item.codeId.name}</ThemedText>
+                <ThemedText style={styles.codeMeaningText} numberOfLines={3}>{item.codeId.meaning}</ThemedText>
+                <View style={styles.timestampRow}>
+                  <ThemedText style={[styles.timestamp, { color: isMyMessage ? (colorScheme === 'light' ? 'rgba(255,255,255,0.8)' : '#000') : (colorScheme === 'dark' ? 'rgba(255,255,255,0.7)' : colors.icon) }]}>
+                    {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </ThemedText>
+                  <StatusIcon status={item.status} isMyMessage={isMyMessage} />
+                </View>
+              </View>
+            </View>
+          ) : (item.mediaType === 'image' || item.mediaType === 'gif') ? (
+            <View>
+              <ExpoImage 
+                source={{ 
+                  uri: item.mediaUrl?.startsWith('http') 
+                    ? item.mediaUrl 
+                    : (item.mediaUrl?.startsWith('/api') 
+                        ? `${BASE_URL.replace('/api', '')}${item.mediaUrl}` 
+                        : `${BASE_URL.replace('/api', '')}${item.mediaUrl?.startsWith('/') ? '' : '/'}${item.mediaUrl}`),
+                  headers: token ? { Authorization: `Bearer ${token}` } : {}
+                }} 
+                style={styles.messageImage} 
+                contentFit="cover"
+              />
+              <View style={[styles.timestampRow, styles.mediaTimestamp]}>
+                <ThemedText style={styles.timestamp}>
+                  {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </ThemedText>
+                <StatusIcon status={item.status} isMyMessage={isMyMessage} />
+              </View>
+            </View>
+          ) : item.mediaType === 'sticker' ? (
+            <View style={styles.stickerContainer}>
+              <ExpoImage 
+                source={{ 
+                  uri: item.mediaUrl?.startsWith('http') 
+                    ? item.mediaUrl 
+                    : (item.mediaUrl?.startsWith('/api') 
+                        ? `${BASE_URL.replace('/api', '')}${item.mediaUrl}` 
+                        : `${BASE_URL.replace('/api', '')}${item.mediaUrl?.startsWith('/') ? '' : '/'}${item.mediaUrl}`),
+                  headers: token ? { Authorization: `Bearer ${token}` } : {}
+                }} 
+                style={styles.stickerImage} 
+                contentFit="contain"
+              />
+              <View style={[styles.timestampRow, styles.mediaTimestamp]}>
+                <ThemedText style={styles.timestamp}>
+                  {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </ThemedText>
+                <StatusIcon status={item.status} isMyMessage={isMyMessage} />
+              </View>
+            </View>
+          ) : item.mediaType === 'document' ? (
+            <TouchableOpacity 
+              style={styles.documentContainer}
+              onPress={() => openDocument(item.mediaUrl || '', item.fileName || 'document')}
+            >
+              <Ionicons name="document-text" size={30} color={isMyMessage ? '#fff' : colors.tint} />
+              <View style={styles.documentInfo}>
+                <ThemedText style={[styles.documentName, { color: isMyMessage ? '#fff' : colors.text }]} numberOfLines={1}>
+                  {item.fileName || 'Document'}
+                </ThemedText>
+                <ThemedText style={[styles.documentSize, { color: isMyMessage ? 'rgba(255,255,255,0.7)' : colors.icon }]}>
+                  {item.fileSize ? `${(item.fileSize / 1024).toFixed(1)} KB` : ''}
+                </ThemedText>
+              </View>
+              <View style={styles.timestampRow}>
+                <ThemedText style={[styles.timestamp, { color: isMyMessage ? 'rgba(255,255,255,0.8)' : colors.icon }]}>
+                  {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </ThemedText>
+                <StatusIcon status={item.status} isMyMessage={isMyMessage} />
+              </View>
+            </TouchableOpacity>
+          ) : item.mediaType === 'video' ? (
+            <View style={styles.videoContainer}>
+              <Video
+                source={{ 
+                  uri: item.mediaUrl?.startsWith('http') 
+                    ? item.mediaUrl 
+                    : (item.mediaUrl?.startsWith('/api') 
+                        ? `${BASE_URL.replace('/api', '')}${item.mediaUrl}` 
+                        : `${BASE_URL.replace('/api', '')}${item.mediaUrl?.startsWith('/') ? '' : '/'}${item.mediaUrl}`),
+                  headers: token ? { Authorization: `Bearer ${token}` } : {}
+                }}
+                rate={1.0}
+                volume={1.0}
+                isMuted={false}
+                resizeMode={Video.RESIZE_MODE_CONTAIN}
+                shouldPlay={false}
+                isLooping={false}
+                useNativeControls
+                style={styles.messageVideo}
+              />
+              <View style={[styles.timestampRow, styles.mediaTimestamp]}>
+                <ThemedText style={styles.timestamp}>
+                  {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </ThemedText>
+                <StatusIcon status={item.status} isMyMessage={isMyMessage} />
+              </View>
+            </View>
+          ) : (item.mediaType === 'voice' || item.mediaType === 'audio') ? (
+            <TouchableOpacity 
+              style={styles.voiceContainer}
+              onPress={() => playSound(item.mediaUrl || '', item._id)}
+            >
+              {loadingSoundId === item._id ? (
+                <ActivityIndicator size="small" color={isMyMessage ? '#fff' : colors.tint} />
+              ) : (
+                <Ionicons 
+                  name={playingId === item._id ? "pause" : "play"} 
+                  size={24} 
+                  color={isMyMessage ? '#fff' : colors.tint} 
+                />
+              )}
+              <View style={styles.voiceWaveform}>
+                {[1,2,3,4,5,6,7,8,9,10].map(i => (
+                  <View 
+                    key={i} 
+                    style={[
+                      styles.waveformBar, 
+                      { 
+                        height: 5 + (i * 2) % 20, 
+                        backgroundColor: isMyMessage ? '#fff' : colors.tint,
+                        opacity: playingId === item._id ? 1 : 0.5
+                      }
+                    ]} 
+                  />
+                ))}
+              </View>
+              <View style={styles.timestampRow}>
+                <ThemedText style={[styles.timestamp, { color: isMyMessage ? 'rgba(255,255,255,0.8)' : colors.icon }]}>
+                  {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </ThemedText>
+                <StatusIcon status={item.status} isMyMessage={isMyMessage} />
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <>
+              <ThemedText style={[styles.messageText, { color: isMyMessage ? (colorScheme === 'light' ? '#fff' : colors.background) : colors.text }]}>{item.text}</ThemedText>
+              <View style={styles.timestampRow}>
+                <ThemedText style={[styles.timestamp, { color: isMyMessage ? (colorScheme === 'light' ? 'rgba(255,255,255,0.8)' : '#000') : (colorScheme === 'dark' ? 'rgba(255,255,255,0.7)' : colors.icon) }]}>
+                  {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </ThemedText>
+                <StatusIcon status={item.status} isMyMessage={isMyMessage} />
+              </View>
+            </>
+          )}
+        </Pressable>
+      </View>
+    </View>
+  );
+});
+
 export default function ChatScreen() {
-  const { id } = useLocalSearchParams();
+  const { id, name, avatar } = useLocalSearchParams();
   const { token, user } = useAuth();
-  const { markAsRead } = useConversations();
+  const { markAsRead, conversations } = useConversations();
   const socket = useSocket();
   const navigation = useNavigation();
   const router = useRouter();
@@ -73,7 +283,21 @@ export default function ChatScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
-  const StatusIcon = ({ status, isMyMessage }: { status?: string, isMyMessage: boolean }) => {
+  // Immediate Header Title update from params
+  useEffect(() => {
+    if (name) {
+      navigation.setOptions({
+        headerTitle: () => (
+          <View style={styles.headerTitleContainer}>
+            <ExpoImage source={{ uri: (avatar as string) || 'https://www.gravatar.com/avatar/?d=mp' }} style={styles.headerAvatar} />
+            <ThemedText style={styles.headerUsername}>{name}</ThemedText>
+          </View>
+        ),
+      });
+    }
+  }, [name, avatar]);
+
+  const StatusIcon = useCallback(({ status, isMyMessage }: { status?: string, isMyMessage: boolean }) => {
     if (!isMyMessage || !status) return null;
     let iconName: any = 'checkmark-outline';
     let color = colors.icon;
@@ -85,9 +309,9 @@ export default function ChatScreen() {
     }
 
     return <Ionicons name={iconName} size={14} color={color} style={{ marginLeft: 4 }} />;
-  };
+  }, [colors.icon]);
 
-  const formatDateSeparator = (dateString: string) => {
+  const formatDateSeparator = useCallback((dateString: string) => {
     const date = new Date(dateString);
     const today = new Date();
     const yesterday = new Date();
@@ -96,7 +320,7 @@ export default function ChatScreen() {
     if (date.toDateString() === today.toDateString()) return 'Today';
     if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
     return date.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  };
+  }, []);
 
   useEffect(() => {
     const loadCache = async () => {
@@ -117,19 +341,25 @@ export default function ChatScreen() {
     const fetchConversation = async () => {
       if (!token || !id) return;
       try {
-        const response = await fetch(`${BASE_URL}/conversations/${id}?page=1&limit=50`, {
+        const response = await fetch(`${BASE_URL}/conversations/${id}?page=1&limit=20`, {
           headers: { 'Authorization': `Bearer ${token}` },
         });
         const data = await response.json();
         if (response.ok) {
           setConversation(data.conversation);
-          setMessages(data.messages);
+          // Strictly deduplicate messages
+          setMessages(data.messages || []);
           setHasMore(data.hasMore);
           
-          // Save to cache
+          // Save to cache (strip any accidental mediaData to save space)
+          const safeMessages = (data.messages || []).map((m: any) => {
+            const { mediaData, ...rest } = m;
+            return rest;
+          });
+
           AsyncStorage.setItem(getChatCacheKey(id.toString()), JSON.stringify({
             conversation: data.conversation,
-            messages: data.messages
+            messages: safeMessages
           }));
 
           const title = data.conversation.isGroup 
@@ -170,17 +400,21 @@ export default function ChatScreen() {
       const handleNewMessage = (data: any) => {
         if (data.conversationId === id) {
           setMessages(prev => {
-            if (prev.find(m => m._id === data.message._id)) return prev;
+            // Check for duplicates before adding
+            if (prev.some(m => m._id === data.message._id)) return prev;
+
             if (data.message.sender._id !== user?._id) {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              // Mark as read immediately if we are in this chat
               markAsRead(id.toString());
             }
             const updated = [...prev, data.message];
             // Update cache
             AsyncStorage.setItem(getChatCacheKey(id.toString()), JSON.stringify({
               conversation: conversation, 
-              messages: updated.slice(-50)
+              messages: updated.slice(-50).map(m => {
+                const { mediaData, ...rest } = m as any;
+                return rest;
+              })
             }));
             return updated;
           });
@@ -227,12 +461,19 @@ export default function ChatScreen() {
         if (!token || !id) return;
         setLoadingMore(true);
         try {
-          const response = await fetch(`${BASE_URL}/conversations/${id}?page=${page}&limit=50`, {
+          const response = await fetch(`${BASE_URL}/conversations/${id}?page=${page}&limit=20`, {
             headers: { 'Authorization': `Bearer ${token}` },
           });
           const data = await response.json();
           if (response.ok) {
-            setMessages(prev => [...data.messages, ...prev]);
+            setMessages(prev => {
+              const combined = [...(data.messages || []), ...prev];
+              const uniqueMap = new Map();
+              combined.forEach(m => uniqueMap.set(m._id, m));
+              return Array.from(uniqueMap.values()).sort((a, b) => 
+                new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+              );
+            });
             setHasMore(data.hasMore);
           }
         } catch (error) {
@@ -265,31 +506,48 @@ export default function ChatScreen() {
     setUploading(true);
     try {
       const formData = new FormData();
+      // Handle URI properly for different platforms
+      const cleanUri = Platform.OS === 'ios' ? uri.replace('file://', '') : uri;
+      
       formData.append('file', {
-        uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
+        uri: cleanUri,
         name: name,
         type: type,
       } as any);
+
+      console.log(`Uploading ${name} to ${BASE_URL}/conversations/upload...`);
 
       const response = await fetch(`${BASE_URL}/conversations/upload`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
+          // DO NOT set Content-Type here, it will break the boundary!
         },
         body: formData,
       });
 
-      const data = await response.json();
-      if (response.ok) {
-        return data;
-      } else {
-        Alert.alert('Upload failed', data.message || 'Something went wrong');
+      const responseText = await response.text();
+      if (!response.ok) {
+        console.error('Upload failed with status:', response.status, responseText);
+        let errorMsg = 'Upload failed';
+        try {
+          const errorJson = JSON.parse(responseText);
+          errorMsg = errorJson.message || errorMsg;
+        } catch (e) {}
+        Alert.alert('Upload failed', errorMsg);
         return null;
       }
-    } catch (error) {
+
+      if (!responseText) {
+        throw new Error('Server returned an empty response');
+      }
+
+      const data = JSON.parse(responseText);
+      console.log('Upload successful:', data);
+      return data;
+    } catch (error: any) {
       console.error('Upload error:', error);
-      Alert.alert('Upload error', 'Could not upload file');
+      Alert.alert('Upload error', error.message || 'Could not upload file');
       return null;
     } finally {
       setUploading(false);
@@ -309,7 +567,6 @@ export default function ChatScreen() {
           text: '',
           mediaType,
           mediaUrl: mediaData.mediaUrl,
-          mediaData: mediaData.mediaData,
           fileName: mediaData.fileName,
           fileSize: mediaData.fileSize,
           fileMimeType: mediaData.fileMimeType,
@@ -317,7 +574,12 @@ export default function ChatScreen() {
       });
       const data = await response.json();
       if (response.ok) {
-        setMessages(prev => [...prev, data]);
+        setMessages(prev => {
+          const combined = [...prev, data];
+          const uniqueMap = new Map();
+          combined.forEach(m => uniqueMap.set(m._id, m));
+          return Array.from(uniqueMap.values());
+        });
         setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
       }
     } catch (error) {
@@ -327,21 +589,43 @@ export default function ChatScreen() {
 
   const pickImage = async () => {
     setShowAttachMenu(false);
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
-      quality: 1, // Keep quality high for GIFs
-    });
+    try {
+      // Modern MediaType array API (SDK 51+)
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images', 'videos'],
+        quality: 1,
+      });
 
-    if (!result.canceled) {
-      const asset = result.assets[0];
-      const mediaData = await uploadFile(asset.uri, asset.fileName || 'image.jpg', asset.mimeType || 'image/jpeg');
-      if (mediaData) {
-        let type = asset.type === 'video' ? 'video' : 'image';
-        // Better GIF detection
-        if (asset.mimeType?.includes('gif') || asset.uri.toLowerCase().endsWith('.gif')) {
-          type = 'gif';
+      if (!result.canceled) {
+        const asset = result.assets[0];
+        const mediaData = await uploadFile(asset.uri, asset.fileName || (asset.type === 'video' ? 'video.mp4' : 'image.jpg'), asset.mimeType || (asset.type === 'video' ? 'video/mp4' : 'image/jpeg'));
+        if (mediaData) {
+          let type = 'image';
+          if (asset.type === 'video') {
+            type = 'video';
+          } else if (asset.mimeType?.includes('gif') || asset.uri.toLowerCase().endsWith('.gif')) {
+            type = 'gif';
+          }
+          handleSendMedia(mediaData, type);
         }
-        handleSendMedia(mediaData, type);
+      }
+    } catch (e) {
+      console.error('pickImage error:', e);
+      // Compatibility fallback for older versions
+      try {
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.All,
+          quality: 1,
+        });
+        if (!result.canceled) {
+          const asset = result.assets[0];
+          const mediaData = await uploadFile(asset.uri, asset.fileName || 'file', asset.mimeType || 'application/octet-stream');
+          if (mediaData) {
+            handleSendMedia(mediaData, asset.type === 'video' ? 'video' : 'image');
+          }
+        }
+      } catch (innerErr) {
+        console.error('pickImage final fallback error:', innerErr);
       }
     }
   };
@@ -420,7 +704,6 @@ export default function ChatScreen() {
         ? uri 
         : `${BASE_URL.replace('/api', '')}${uri.startsWith('/') ? '' : '/'}${uri}`;
 
-      // Set audio mode for playback
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         playsInSilentModeIOS: true,
@@ -456,10 +739,7 @@ export default function ChatScreen() {
     const fullUri = uri.startsWith('http') 
         ? uri 
         : `${BASE_URL.replace('/api', '')}${uri.startsWith('/') ? '' : '/'}${uri}`;
-    
-    // For documents, we might need a token in the query for Linking to work
     const urlWithToken = `${fullUri}${fullUri.includes('?') ? '&' : '?'}token=${token}`;
-    
     try {
       const supported = await Linking.canOpenURL(urlWithToken);
       if (supported) {
@@ -487,7 +767,12 @@ export default function ChatScreen() {
       });
       const data = await response.json();
       if (response.ok) {
-        setMessages(prev => [...prev, data]);
+        setMessages(prev => {
+          const combined = [...prev, data];
+          const uniqueMap = new Map();
+          combined.forEach(m => uniqueMap.set(m._id, m));
+          return Array.from(uniqueMap.values());
+        });
         setNewMessage('');
         setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
       }
@@ -495,6 +780,31 @@ export default function ChatScreen() {
       console.error('Network error during sending message:', error);
     }
   };
+
+  const renderItem = useCallback(({ item, index }: any) => {
+    const isMyMessage = item.sender._id.toString() === user?._id?.toString();
+    const showDateSeparator = index === 0 || 
+      new Date(messages[index - 1].timestamp).toDateString() !== new Date(item.timestamp).toDateString();
+
+    return (
+      <MessageItem 
+        item={item}
+        index={index}
+        isMyMessage={isMyMessage}
+        showDateSeparator={showDateSeparator}
+        formatDateSeparator={formatDateSeparator}
+        colors={colors}
+        colorScheme={colorScheme}
+        setPeekCode={setPeekCode}
+        StatusIcon={StatusIcon}
+        token={token}
+        playSound={playSound}
+        playingId={playingId}
+        loadingSoundId={loadingSoundId}
+        openDocument={openDocument}
+      />
+    );
+  }, [messages, user?._id, colors, colorScheme, StatusIcon, formatDateSeparator, token, playingId, loadingSoundId]);
 
   return (
     <KeyboardAvoidingView 
@@ -507,213 +817,24 @@ export default function ChatScreen() {
           ref={flatListRef}
           data={messages}
           keyExtractor={(item) => item._id}
+          initialNumToRender={8}
+          maxToRenderPerBatch={5}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS === 'android'}
           ListHeaderComponent={
             loadingMore ? (
               <ActivityIndicator size="small" color={colors.tint} style={{ marginVertical: 10 }} />
             ) : null
           }
           onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.1}
-          renderItem={({ item, index }) => {
-            const isMyMessage = item.sender._id.toString() === user?._id?.toString();
-            const showDateSeparator = index === 0 || 
-              new Date(messages[index - 1].timestamp).toDateString() !== new Date(item.timestamp).toDateString();
-
-            return (
-              <View>
-                {showDateSeparator && (
-                  <View style={styles.dateSeparator}>
-                    <View style={[styles.dateLine, { backgroundColor: colors.icon }]} />
-                    <ThemedText style={[styles.dateText, { color: colors.icon, backgroundColor: colors.background }]}>
-                      {formatDateSeparator(item.timestamp)}
-                    </ThemedText>
-                    <View style={[styles.dateLine, { backgroundColor: colors.icon }]} />
-                  </View>
-                )}
-                <View style={[styles.messageWrapper, isMyMessage ? styles.myMessageWrapper : styles.theirMessageWrapper]}>
-                  {!isMyMessage && (
-                    <ExpoImage source={{ uri: item.sender.profilePicture || 'https://www.gravatar.com/avatar/?d=mp' }} style={styles.messageAvatar} />
-                  )}
-                  <Pressable 
-                    onPress={() => item.codeId && setPeekCode(item.codeId)}
-                    style={[
-                      styles.messageContainer,
-                      isMyMessage ? styles.myMessage : styles.theirMessage,
-                      { 
-                        backgroundColor: item.codeId 
-                          ? (colorScheme === 'dark' ? '#2A2A2A' : '#FFFFFF')
-                          : (isMyMessage ? colors.tint : (colorScheme === 'light' ? '#E9E9EB' : '#333333')),
-                        borderWidth: item.codeId ? 1 : 0,
-                        borderColor: item.codeId ? item.codeId.color : 'transparent',
-                        padding: (item.codeId || item.mediaType === 'image' || item.mediaType === 'video' || item.mediaType === 'gif' || item.mediaType === 'sticker') ? 0 : 10,
-                        width: (item.codeId || item.mediaType === 'image' || item.mediaType === 'video' || item.mediaType === 'gif' || item.mediaType === 'sticker') ? '90%' : undefined,
-                        maxWidth: (item.mediaType === 'image' || item.mediaType === 'video' || item.mediaType === 'gif' || item.mediaType === 'sticker') ? '70%' : '85%',
-                        alignSelf: item.codeId ? 'center' : (isMyMessage ? 'flex-end' : 'flex-start'),
-                        marginVertical: item.codeId ? 10 : 2,
-                        elevation: item.codeId ? 3 : 0,
-                        overflow: 'hidden',
-                      }
-                    ]}
-                  >
-                    {item.codeId ? (
-                      <View style={styles.richMessageCard}>
-                        <View style={[styles.colorSideBar, { backgroundColor: item.codeId.color }]} />
-                        <View style={styles.richContent}>
-                          <ThemedText style={[styles.codeNameLabel, { color: item.codeId.color }]}>{item.codeId.name}</ThemedText>
-                          <ThemedText style={styles.codeMeaningText} numberOfLines={3}>{item.codeId.meaning}</ThemedText>
-                          <View style={styles.timestampRow}>
-                            <ThemedText style={[styles.timestamp, { color: isMyMessage ? (colorScheme === 'light' ? 'rgba(255,255,255,0.8)' : '#000') : (colorScheme === 'dark' ? 'rgba(255,255,255,0.7)' : colors.icon) }]}>
-                              {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </ThemedText>
-                            <StatusIcon status={item.status} isMyMessage={isMyMessage} />
-                          </View>
-                        </View>
-                      </View>
-                    ) : (item.mediaType === 'image' || item.mediaType === 'gif') ? (
-                      <View>
-                        <ExpoImage 
-                          source={{ 
-                            uri: item.mediaUrl?.startsWith('http') 
-                              ? item.mediaUrl 
-                              : (item.mediaUrl?.startsWith('/api') 
-                                  ? `${BASE_URL.replace('/api', '')}${item.mediaUrl}` 
-                                  : `${BASE_URL.replace('/api', '')}${item.mediaUrl?.startsWith('/') ? '' : '/'}${item.mediaUrl}`),
-                            headers: token ? { Authorization: `Bearer ${token}` } : {}
-                          }} 
-                          style={styles.messageImage} 
-                          contentFit="cover"
-                        />
-                        <View style={[styles.timestampRow, styles.mediaTimestamp]}>
-                          <ThemedText style={styles.timestamp}>
-                            {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </ThemedText>
-                          <StatusIcon status={item.status} isMyMessage={isMyMessage} />
-                        </View>
-                      </View>
-                    ) : item.mediaType === 'sticker' ? (
-                      <View style={styles.stickerContainer}>
-                        <ExpoImage 
-                          source={{ 
-                            uri: item.mediaUrl?.startsWith('http') 
-                              ? item.mediaUrl 
-                              : (item.mediaUrl?.startsWith('/api') 
-                                  ? `${BASE_URL.replace('/api', '')}${item.mediaUrl}` 
-                                  : `${BASE_URL.replace('/api', '')}${item.mediaUrl?.startsWith('/') ? '' : '/'}${item.mediaUrl}`),
-                            headers: token ? { Authorization: `Bearer ${token}` } : {}
-                          }} 
-                          style={styles.stickerImage} 
-                          contentFit="contain"
-                        />
-                        <View style={[styles.timestampRow, styles.mediaTimestamp]}>
-                          <ThemedText style={styles.timestamp}>
-                            {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </ThemedText>
-                          <StatusIcon status={item.status} isMyMessage={isMyMessage} />
-                        </View>
-                      </View>
-                    ) : item.mediaType === 'document' ? (
-                      <TouchableOpacity 
-                        style={styles.documentContainer}
-                        onPress={() => openDocument(item.mediaUrl || '', item.fileName || 'document')}
-                      >
-                        <Ionicons name="document-text" size={30} color={isMyMessage ? '#fff' : colors.tint} />
-                        <View style={styles.documentInfo}>
-                          <ThemedText style={[styles.documentName, { color: isMyMessage ? '#fff' : colors.text }]} numberOfLines={1}>
-                            {item.fileName || 'Document'}
-                          </ThemedText>
-                          <ThemedText style={[styles.documentSize, { color: isMyMessage ? 'rgba(255,255,255,0.7)' : colors.icon }]}>
-                            {item.fileSize ? `${(item.fileSize / 1024).toFixed(1)} KB` : ''}
-                          </ThemedText>
-                        </View>
-                        <View style={styles.timestampRow}>
-                          <ThemedText style={[styles.timestamp, { color: isMyMessage ? 'rgba(255,255,255,0.8)' : colors.icon }]}>
-                            {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </ThemedText>
-                          <StatusIcon status={item.status} isMyMessage={isMyMessage} />
-                        </View>
-                      </TouchableOpacity>
-                    ) : item.mediaType === 'video' ? (
-                      <View style={styles.videoContainer}>
-                        <Video
-                          source={{ 
-                            uri: item.mediaUrl?.startsWith('http') 
-                              ? item.mediaUrl 
-                              : (item.mediaUrl?.startsWith('/api') 
-                                  ? `${BASE_URL.replace('/api', '')}${item.mediaUrl}` 
-                                  : `${BASE_URL.replace('/api', '')}${item.mediaUrl?.startsWith('/') ? '' : '/'}${item.mediaUrl}`),
-                            headers: token ? { Authorization: `Bearer ${token}` } : {}
-                          }}
-                          rate={1.0}
-                          volume={1.0}
-                          isMuted={false}
-                          resizeMode={Video.RESIZE_MODE_CONTAIN}
-                          shouldPlay={false}
-                          isLooping={false}
-                          useNativeControls
-                          style={styles.messageVideo}
-                        />
-                        <View style={[styles.timestampRow, styles.mediaTimestamp]}>
-                          <ThemedText style={styles.timestamp}>
-                            {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </ThemedText>
-                          <StatusIcon status={item.status} isMyMessage={isMyMessage} />
-                        </View>
-                      </View>
-                    ) : (item.mediaType === 'voice' || item.mediaType === 'audio') ? (
-                      <TouchableOpacity 
-                        style={styles.voiceContainer}
-                        onPress={() => playSound(item.mediaUrl || '', item._id)}
-                      >
-                        {loadingSoundId === item._id ? (
-                          <ActivityIndicator size="small" color={isMyMessage ? '#fff' : colors.tint} />
-                        ) : (
-                          <Ionicons 
-                            name={playingId === item._id ? "pause" : "play"} 
-                            size={24} 
-                            color={isMyMessage ? '#fff' : colors.tint} 
-                          />
-                        )}
-                        <View style={styles.voiceWaveform}>
-                          {/* Simplified waveform representation */}
-                          {[1,2,3,4,5,6,7,8,9,10].map(i => (
-                            <View 
-                              key={i} 
-                              style={[
-                                styles.waveformBar, 
-                                { 
-                                  height: Math.random() * 20 + 5, 
-                                  backgroundColor: isMyMessage ? '#fff' : colors.tint,
-                                  opacity: playingId === item._id ? 1 : 0.5
-                                }
-                              ]} 
-                            />
-                          ))}
-                        </View>
-                        <View style={styles.timestampRow}>
-                          <ThemedText style={[styles.timestamp, { color: isMyMessage ? 'rgba(255,255,255,0.8)' : colors.icon }]}>
-                            {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </ThemedText>
-                          <StatusIcon status={item.status} isMyMessage={isMyMessage} />
-                        </View>
-                      </TouchableOpacity>
-                    ) : (
-                      <>
-                        <ThemedText style={[styles.messageText, { color: isMyMessage ? (colorScheme === 'light' ? '#fff' : colors.background) : colors.text }]}>{item.text}</ThemedText>
-                        <View style={styles.timestampRow}>
-                          <ThemedText style={[styles.timestamp, { color: isMyMessage ? (colorScheme === 'light' ? 'rgba(255,255,255,0.8)' : '#000') : (colorScheme === 'dark' ? 'rgba(255,255,255,0.7)' : colors.icon) }]}>
-                            {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </ThemedText>
-                          <StatusIcon status={item.status} isMyMessage={isMyMessage} />
-                        </View>
-                      </>
-                    )}
-                  </Pressable>
-                </View>
-              </View>
-            );
-          }}
+          onEndReachedThreshold={0.5}
+          renderItem={renderItem}
           contentContainerStyle={styles.messagesList}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          onLayout={() => {
+            if (messages.length > 0) {
+              flatListRef.current?.scrollToEnd({ animated: false });
+            }
+          }}
         />
 
         {peekCode && (

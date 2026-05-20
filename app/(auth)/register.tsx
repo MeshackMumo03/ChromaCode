@@ -5,10 +5,6 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAuth } from "@/hooks/useAuth";
 import { Ionicons } from "@expo/vector-icons";
-import {
-  GoogleSignin,
-  statusCodes,
-} from "@react-native-google-signin/google-signin";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -22,6 +18,21 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Constants from 'expo-constants';
+
+// Only import GoogleSignin if not in Expo Go to avoid crashes
+let GoogleSignin: any = null;
+let statusCodes: any = null;
+
+if (Constants.appOwnership !== 'expo') {
+  try {
+    const GoogleModule = require('@react-native-google-signin/google-signin');
+    GoogleSignin = GoogleModule.GoogleSignin;
+    statusCodes = GoogleModule.statusCodes;
+  } catch (e) {
+    console.log('Google Sign-in not available');
+  }
+}
 
 export default function RegisterScreen() {
   const [username, setUsername] = useState("");
@@ -31,13 +42,15 @@ export default function RegisterScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
+  const isExpoGo = Constants.appOwnership === 'expo';
 
   useEffect(() => {
-    GoogleSignin.configure({
-      webClientId:
-        "292338562017-1iil6e508ucq148ogasibc5bql6r3uf2.apps.googleusercontent.com",
-      offlineAccess: true,
-    });
+    if (GoogleSignin) {
+      GoogleSignin.configure({
+        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+        offlineAccess: true,
+      });
+    }
   }, []);
 
   const handleRegister = async () => {
@@ -69,6 +82,13 @@ export default function RegisterScreen() {
   };
 
   const handleGoogleSignIn = async () => {
+    if (isExpoGo) {
+      Alert.alert('Not Supported', 'Google Sign-In is not supported in Expo Go. Please use a development build.');
+      return;
+    }
+
+    if (!GoogleSignin) return;
+
     try {
       await GoogleSignin.hasPlayServices();
 
@@ -99,9 +119,9 @@ export default function RegisterScreen() {
         Alert.alert("Error", "Failed to authenticate with Google");
       }
     } catch (error: any) {
-      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+      if (statusCodes && error.code === statusCodes.SIGN_IN_CANCELLED) {
         // user cancelled
-      } else if (error.code === statusCodes.IN_PROGRESS) {
+      } else if (statusCodes && error.code === statusCodes.IN_PROGRESS) {
         // operation in progress
       } else {
         console.error("Google Sign-In Error:", error);

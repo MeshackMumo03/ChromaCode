@@ -13,6 +13,7 @@ import { CodesProvider } from '@/hooks/useCodes';
 import { useNotifications } from '@/hooks/useNotifications';
 import { SocketProvider } from '@/hooks/useSocket';
 import { ConversationsProvider } from '@/hooks/useConversations';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -24,6 +25,28 @@ function RootLayoutNav() {
   const router = useRouter();
   
   useNotifications();
+
+  // Maintenance: Clear bloated cache from previous versions if needed
+  useEffect(() => {
+    const clearBloatedCache = async () => {
+      try {
+        const hasCleaned = await AsyncStorage.getItem('chromacode_cache_cleaned_v2');
+        if (!hasCleaned) {
+          console.log('--- Maintenance: Purging old AsyncStorage cache ---');
+          const keys = await AsyncStorage.getAllKeys();
+          const chatKeys = keys.filter(key => key.startsWith('chromacode_chat_') || key === 'chromacode_cache_conversations');
+          if (chatKeys.length > 0) {
+            await AsyncStorage.multiRemove(chatKeys);
+          }
+          await AsyncStorage.setItem('chromacode_cache_cleaned_v2', 'true');
+          console.log('--- Maintenance: Cache purged successfully ---');
+        }
+      } catch (e) {
+        console.error('Failed to clear bloated cache:', e);
+      }
+    };
+    clearBloatedCache();
+  }, []);
 
   useEffect(() => {
     if (!isLoading && !token) {

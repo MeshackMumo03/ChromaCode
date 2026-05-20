@@ -19,7 +19,8 @@ const {
 // Configure multer for local storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/');
+    const uploadPath = path.resolve(__dirname, '../../uploads');
+    cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
     cb(null, `${Date.now()}-${file.originalname}`);
@@ -34,7 +35,7 @@ router.route('/')
   .get(getConversations);
 
 router.post('/group', createGroupChat);
-router.route('/upload').post(memoryUpload.single('file'), uploadMessageMedia);
+router.route('/upload').post(upload.single('file'), uploadMessageMedia);
 router.route('/messages/:id/media').get(getMessageMedia);
 
 router.get('/:id', getConversation);

@@ -89,7 +89,13 @@ export default function ConversationsScreen() {
             return (
               <TouchableOpacity
                 style={[styles.conversationItem, { borderBottomColor: colors.icon + '20' }]}
-                onPress={() => router.push(`/chat/${item._id}`)}
+                onPress={() => router.push({
+                  pathname: `/chat/${item._id}`,
+                  params: { 
+                    name: getConversationTitle(item),
+                    avatar: getConversationAvatar(item)
+                  }
+                })}
               >
                 <View>
                   <Image 

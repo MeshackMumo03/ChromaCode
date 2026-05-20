@@ -62,7 +62,7 @@ const startConversation = asyncHandler(async (req, res) => {
     readBy: [senderId],
   });
 
-  if (message.mediaData) {
+  if (message.mediaData && !mediaUrl) {
     message.mediaUrl = `/api/conversations/messages/${message._id}/media`;
   }
 
@@ -151,9 +151,11 @@ const getConversations = asyncHandler(async (req, res) => {
     .populate('participants', 'username profilePicture')
     .populate({
       path: 'lastMessage',
+      select: '-mediaData', // Heavily exclude binary data here
       populate: { path: 'codeId' }
     })
-    .sort({ updatedAt: -1 });
+    .sort({ updatedAt: -1 })
+    .lean(); // Return plain JS objects for speed
 
   // Add unread count for each conversation
   const conversationsWithUnread = await Promise.all(conversations.map(async (conv) => {
@@ -162,27 +164,25 @@ const getConversations = asyncHandler(async (req, res) => {
       readBy: { $ne: userId }
     });
     
-    // Convert Mongoose doc to plain object to add virtual field
-    const convObj = conv.toObject();
-    convObj.unreadCount = unreadCount;
-    return convObj;
+    conv.unreadCount = unreadCount;
+    return conv;
   }));
 
   res.json(conversationsWithUnread);
 });
 
 // @desc    Get a single conversation with paginated messages
-// @route   GET /api/conversations/:id?page=1&limit=50
+// @route   GET /api/conversations/:id?page=1&limit=20
 // @access  Private
 const getConversation = asyncHandler(async (req, res) => {
   const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 50;
+  const limit = parseInt(req.query.limit) || 20;
   const skip = (page - 1) * limit;
 
   const conversation = await Conversation.findById(req.params.id).populate(
     'participants',
     'username profilePicture'
-  );
+  ).lean();
 
   if (
     !conversation ||
@@ -193,11 +193,13 @@ const getConversation = asyncHandler(async (req, res) => {
   }
 
   const messages = await Message.find({ conversationId: req.params.id })
+    .select('-mediaData')
     .populate('sender', 'username profilePicture')
     .populate('codeId')
     .sort({ createdAt: -1 }) // Get newest first for pagination
     .skip(skip)
-    .limit(limit);
+    .limit(limit)
+    .lean();
 
   // Return messages in chronological order for the frontend
   res.json({ 
@@ -262,7 +264,7 @@ const sendMessage = asyncHandler(async (req, res) => {
     readBy: [senderId],
   });
 
-  if (message.mediaData) {
+  if (message.mediaData && !mediaUrl) {
     message.mediaUrl = `/api/conversations/messages/${message._id}/media`;
   }
 
@@ -321,19 +323,24 @@ const sendMessage = asyncHandler(async (req, res) => {
 // @route   POST /api/conversations/upload
 // @access  Private
 const uploadMessageMedia = asyncHandler(async (req, res) => {
+  console.log('--- uploadMessageMedia start ---');
   if (!req.file) {
+    console.log('uploadMessageMedia: No file provided');
     res.status(400);
     throw new Error('Please upload a file');
   }
 
-  // Return the data directly to be saved in the sendMessage call
-  // We return the buffer as a base64 string for the client to hold temporarily
-  res.json({ 
-    mediaData: req.file.buffer.toString('base64'),
+  console.log(`uploadMessageMedia: Received file ${req.file.originalname} (${req.file.size} bytes)`);
+
+  const responseData = { 
+    mediaUrl: `/uploads/${req.file.filename}`,
     fileName: req.file.originalname,
     fileSize: req.file.size,
     fileMimeType: req.file.mimetype,
-  });
+  };
+
+  console.log('uploadMessageMedia: Sending response:', responseData);
+  res.json(responseData);
 });
 
 // @desc    Get message media from MongoDB
