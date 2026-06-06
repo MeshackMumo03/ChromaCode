@@ -19,3 +19,10 @@ export const getBaseUrl = (): string => {
   // 3. Fallback for web or if no other URL is found
   return `https://chromacode.onrender.com/api`;
 };
+
+export const getImageUrl = (url?: string): string => {
+  if (!url) return 'https://www.gravatar.com/avatar/?d=mp';
+  if (url.startsWith('http')) return url;
+  const baseUrl = getBaseUrl().replace('/api', '');
+  return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+};

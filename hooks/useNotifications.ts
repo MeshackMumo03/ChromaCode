@@ -18,8 +18,8 @@ if (Constants.appOwnership !== 'expo') {
 export function useNotifications() {
   const [expoPushToken, setExpoPushToken] = useState('');
   const [notification, setNotification] = useState<any>(undefined);
-  const notificationListener = useRef<any>();
-  const responseListener = useRef<any>();
+  const notificationListener = useRef<any>(null);
+  const responseListener = useRef<any>(null);
   const { token, user } = useAuth();
   const BASE_URL = getBaseUrl();
 

@@ -13,7 +13,9 @@ const {
   deleteGroupChat,
   markMessagesAsRead,
   uploadMessageMedia,
-  getMessageMedia
+  getMessageMedia,
+  addReaction,
+  removeReaction
 } = require('../controllers/conversationController');
 
 // Configure multer for local storage
@@ -45,5 +47,7 @@ router.delete('/:id/leave', leaveGroupChat);
 router.delete('/:id', deleteGroupChat);
 
 router.post('/:id/messages', sendMessage);
+router.post('/:id/messages/:messageId/reactions', addReaction);
+router.delete('/:id/messages/:messageId/reactions', removeReaction);
 
 module.exports = router;

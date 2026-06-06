@@ -92,7 +92,7 @@ export default function CodeFormScreen() {
         isLoading={isLoading}
         style={styles.button}
       />
-      <StyledButton title="Cancel" onPress={() => router.back()} style={[styles.button, { backgroundColor: colors.icon, marginTop: 10 }]} />
+      <StyledButton title="Cancel" onPress={() => router.back()} style={{ width: '100%', backgroundColor: colors.icon, marginTop: 10 }} />
     </ThemedView>
   );
 }

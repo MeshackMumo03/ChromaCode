@@ -537,12 +537,94 @@ const markMessagesAsRead = asyncHandler(async (req, res) => {
   res.json({ message: 'Messages marked as read' });
 });
 
+// @desc    Delete a message
+// @route   DELETE /api/conversations/:id/messages/:messageId
+// @access  Private
+const deleteMessage = asyncHandler(async (req, res) => {
+  const { id, messageId } = req.params;
+  const userId = req.user._id;
+
+  const message = await Message.findById(messageId);
+  if (!message) {
+    res.status(404);
+    throw new Error('Message not found');
+  }
+
+  // Only allow sender to delete
+  if (message.sender.toString() !== userId.toString()) {
+    res.status(401);
+    throw new Error('User not authorized to delete this message');
+  }
+
+  await message.deleteOne();
+
+  // Notify other participants via socket
+  const io = req.app.get('io');
+  io.to(id).emit('message_deleted', { conversationId: id, messageId });
+
+  res.json({ message: 'Message deleted' });
+});
+
+// @desc    Add a reaction to a message
+// @route   POST /api/conversations/:id/messages/:messageId/reactions
+// @access  Private
+const addReaction = asyncHandler(async (req, res) => {
+  const { id, messageId } = req.params;
+  const { emoji } = req.body;
+  const userId = req.user._id;
+
+  const message = await Message.findById(messageId);
+  if (!message) {
+    res.status(404);
+    throw new Error('Message not found');
+  }
+
+  // Remove existing reaction from this user if any
+  message.reactions = message.reactions.filter(r => r.userId.toString() !== userId.toString());
+  
+  // Add new reaction
+  message.reactions.push({ emoji, userId });
+  await message.save();
+
+  // Notify participants
+  const io = req.app.get('io');
+  io.to(id).emit('message_reaction', { conversationId: id, messageId, reactions: message.reactions });
+
+  res.json(message.reactions);
+});
+
+// @desc    Remove a reaction from a message
+// @route   DELETE /api/conversations/:id/messages/:messageId/reactions
+// @access  Private
+const removeReaction = asyncHandler(async (req, res) => {
+  const { id, messageId } = req.params;
+  const userId = req.user._id;
+
+  const message = await Message.findById(messageId);
+  if (!message) {
+    res.status(404);
+    throw new Error('Message not found');
+  }
+
+  message.reactions = message.reactions.filter(r => r.userId.toString() !== userId.toString());
+  await message.save();
+
+  // Notify participants
+  const io = req.app.get('io');
+  io.to(id).emit('message_reaction', { conversationId: id, messageId, reactions: message.reactions });
+
+  res.json(message.reactions);
+});
+
 module.exports = {
   startConversation,
   createGroupChat,
   getConversations,
   getConversation,
   sendMessage,
+  deleteMessage,
+  addReaction,
+  removeReaction,
   updateGroupChat,
   leaveGroupChat,
   deleteGroupChat,

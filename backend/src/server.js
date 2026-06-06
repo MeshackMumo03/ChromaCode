@@ -43,6 +43,10 @@ io.on('connection', (socket) => {
         io.emit('user_status_change', { userId, status: 'online' });
     });
 
+    socket.on('get_online_users', () => {
+        socket.emit('online_users', Array.from(connectedUsers.keys()));
+    });
+
     socket.on('join_conversation', (conversationId) => {
         socket.join(conversationId);
         console.log(`Socket ${socket.id} joined conversation room ${conversationId}`);

@@ -99,6 +99,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginVertical: 10,
   },
+  button: {
+    padding: 15,
+    borderRadius: 8,
+  },
   listContainer: {
     paddingVertical: 10,
   },

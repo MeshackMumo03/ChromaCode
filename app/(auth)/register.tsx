@@ -59,7 +59,7 @@ export default function RegisterScreen() {
       return;
     }
 
-    const result = await register(username, email, password);
+    const result: any = await register(username, email, password);
     if (result.success) {
       if (result.needsVerification) {
         Alert.alert(
