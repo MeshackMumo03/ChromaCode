@@ -96,10 +96,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           pushToken: data.pushToken
         });
         await SecureStore.setItemAsync('userToken', data.token);
-        setTimeout(() => router.replace('/(tabs)'), 100);
+        // Use replace immediately without timeout for better UX, or a shorter one
+        router.replace('/(tabs)');
         return true;
       } else {
-        if (response.status === 401 && data.message.includes('verify')) {
+        if (response.status === 401 && data.message && typeof data.message === 'string' && data.message.includes('verify')) {
           router.push({ pathname: '/verify-email', params: { email } });
         }
         console.error('Login failed:', data.message || data.error || data);
@@ -155,7 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(data.token);
         setUser(data);
         await SecureStore.setItemAsync('userToken', data.token);
-        setTimeout(() => router.replace('/(tabs)'), 100);
+        router.replace('/(tabs)');
         return true;
       } else {
         return false;
@@ -182,7 +183,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(data.token);
         setUser(data);
         await SecureStore.setItemAsync('userToken', data.token);
-        setTimeout(() => router.replace('/(tabs)'), 100);
+        router.replace('/(tabs)');
         return true;
       } else if (data.needsVerification) {
         // Redirect to verify email screen if backend requires it
@@ -200,11 +201,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
+      setIsLoading(true);
+      // Clear all state first
       setToken(null);
       setUser(null);
       await SecureStore.deleteItemAsync('userToken');
+      // Force navigation to login
+      router.replace('/login');
     } catch (error) {
       console.error('Failed to clear auth from SecureStore', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 

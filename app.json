@@ -45,7 +45,10 @@
         }
       ],
       "@react-native-google-signin/google-signin",
-      "expo-video"
+      "expo-video",
+      "expo-font",
+      "expo-secure-store",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true

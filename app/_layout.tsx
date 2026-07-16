@@ -50,7 +50,7 @@ function RootLayoutNav() {
 
   useEffect(() => {
     if (!isLoading && !token) {
-      router.replace('/login');
+      setTimeout(() => router.replace('/login'), 0);
     }
   }, [token, isLoading, router]);
 

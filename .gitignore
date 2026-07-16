@@ -47,3 +47,7 @@ app-example
 # generated native folders
 /ios
 /android
+
+
+# K6 - Testing
+k6-tests/

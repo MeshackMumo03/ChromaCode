@@ -49,31 +49,17 @@ export default function ChromaScreen() {
   );
 
   useEffect(() => {
-    if (socket) {
+    if (socket && user) {
       const handleNewMessage = async (data: any) => {
-        // Check for codeId in the message (could be populated object or ID string)
-        if (data.message.codeId) {
-          console.log('ChromaScreen: New shared code detected via socket');
-          await fetchCodes();
-          
-          // Auto-make visible if we have the name
-          if (typeof data.message.codeId === 'object') {
-            addCodeToVisibleCodes(data.message.codeId.name);
-          }
-          
-          Alert.alert('New Code Shared!', `A new color code has been added to your library.`);
-        }
-      };
-
-      socket.on('new_message', async (data) => {
         // CRITICAL DEBUG LOG
         console.log('Chroma Tab: Socket Event Received:', JSON.stringify(data, null, 2));
 
-        // Check if the message contains a code
+        // Check if the message contains a code and if the sender is NOT the current user
         const hasCode = !!(data.message && data.message.codeId);
+        const isSender = data.message.sender && (data.message.sender._id === user._id || data.message.sender === user._id);
         
-        if (hasCode) {
-          console.log('Chroma Tab: New code detected! Fetching library...');
+        if (hasCode && !isSender) {
+          console.log('Chroma Tab: New code detected from another user! Fetching library...');
           await fetchCodes();
           
           // Try to get name for visibility
@@ -85,11 +71,17 @@ export default function ChromaScreen() {
             addCodeToVisibleCodes(codeName);
           }
           
-          Alert.alert('New Code Shared!', `A new color code has been added to your library.`);
+          Alert.alert('New Code Received!', `A new color code has been added to your library.`);
         }
-      });
+      };
+
+      socket.on('new_message', handleNewMessage);
+      
+      return () => {
+        socket.off('new_message', handleNewMessage);
+      };
     }
-  }, [socket, fetchCodes, addCodeToVisibleCodes]);
+  }, [socket, user, fetchCodes, addCodeToVisibleCodes]);
 
   // Ensure all current codes are visible if they are new
   useEffect(() => {

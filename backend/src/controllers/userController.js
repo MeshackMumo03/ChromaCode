@@ -4,8 +4,13 @@ const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const User = require('../models/User');
 
+// Security Check: Ensure environment variables are set
+if (!process.env.JWT_SECRET) {
+  console.error('FATAL ERROR: JWT_SECRET is not defined.');
+  process.exit(1);
+}
+
 // Configure nodemailer transporter
-// Note: You will need to add EMAIL_USER and EMAIL_PASS to your .env file
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
