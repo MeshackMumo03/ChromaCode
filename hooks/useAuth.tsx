@@ -22,6 +22,7 @@ interface AuthContextType {
   googleLogin: (userInfo: any) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
+  isInitializing: boolean;
   updateUser: (newUser: any) => void;
   fetchUser: () => Promise<void>;
 }
@@ -43,6 +44,7 @@ export function useAuth() {
       googleLogin: async () => false,
       logout: () => {},
       isLoading: false,
+      isInitializing: false,
       updateUser: () => {},
       fetchUser: async () => {},
     };
@@ -53,7 +55,12 @@ export function useAuth() {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  // isInitializing only covers the one-time SecureStore check on app start.
+  // It is intentionally kept separate from isLoading so that individual
+  // actions (login/logout/etc.) never cause the whole app's navigator to
+  // unmount, which was crashing the app on logout in production builds.
+  const [isInitializing, setIsInitializing] = useState(true);
   const router = useRouter(); // Initialize router
 
   useEffect(() => {
@@ -66,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         console.error('Failed to load auth from SecureStore', error);
       } finally {
-        setIsLoading(false);
+        setIsInitializing(false);
       }
     };
     loadStoredAuth();
@@ -201,17 +208,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      setIsLoading(true);
-      // Clear all state first
-      setToken(null);
-      setUser(null);
+      // Clear the stored token first, then clear in-memory state.
+      // Navigation to the login screen is handled centrally by the root
+      // layout's redirect effect (triggered by token becoming null), so we
+      // don't call router.replace() here too — doing so from inside this
+      // function used to race with that effect (and with isLoading briefly
+      // unmounting the whole navigator), which is what caused the app to
+      // crash on logout in production builds.
       await SecureStore.deleteItemAsync('userToken');
-      // Force navigation to login
-      router.replace('/login');
     } catch (error) {
       console.error('Failed to clear auth from SecureStore', error);
     } finally {
-      setIsLoading(false);
+      setToken(null);
+      setUser(null);
     }
   };
 
@@ -249,7 +258,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [token]);
 
   return (
-    <AuthContext.Provider value={{ user, token, login, register, googleLogin, verifyEmail, logout, isLoading, updateUser, fetchUser }}>
+    <AuthContext.Provider value={{ user, token, login, register, googleLogin, verifyEmail, logout, isLoading, isInitializing, updateUser, fetchUser }}>
       {children}
     </AuthContext.Provider>
   );

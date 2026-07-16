@@ -210,7 +210,6 @@ export default function ProfileScreen() {
               if (response.ok) {
                 Alert.alert('Success', 'Account deleted successfully.');
                 logout();
-                router.replace('/login');
               } else {
                 const data = await response.json();
                 Alert.alert('Deletion Failed', data.message || 'Could not delete account.');
@@ -229,7 +228,6 @@ export default function ProfileScreen() {
 
   const handleLogout = () => {
     logout();
-    router.replace('/login');
   };
 
   if (!user) {

@@ -21,7 +21,7 @@ export const unstable_settings = {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  const { isLoading, token } = useAuth();
+  const { isLoading, isInitializing, token } = useAuth();
   const router = useRouter();
   
   useNotifications();
@@ -49,12 +49,12 @@ function RootLayoutNav() {
   }, []);
 
   useEffect(() => {
-    if (!isLoading && !token) {
+    if (!isInitializing && !token) {
       setTimeout(() => router.replace('/login'), 0);
     }
-  }, [token, isLoading, router]);
+  }, [token, isInitializing, router]);
 
-  if (isLoading) {
+  if (isInitializing) {
     return null;
   }
 
