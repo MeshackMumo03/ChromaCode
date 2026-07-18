@@ -36,10 +36,23 @@ export default function LoginScreen() {
 
   useEffect(() => {
     if (GoogleSignin) {
-      GoogleSignin.configure({
-        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-        offlineAccess: true,
-      });
+      const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+      if (!webClientId) {
+        // Don't let a missing/misconfigured env var crash the whole app on
+        // mount — just skip configuring Google Sign-In. The Google button
+        // will simply fail gracefully (see handleGoogleSignIn's guard)
+        // instead of taking down the entire app.
+        console.warn('EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID is not set; Google Sign-In will be unavailable.');
+        return;
+      }
+      try {
+        GoogleSignin.configure({
+          webClientId,
+          offlineAccess: true,
+        });
+      } catch (e) {
+        console.warn('GoogleSignin.configure failed:', e);
+      }
     }
   }, []);
 

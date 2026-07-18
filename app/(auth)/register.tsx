@@ -46,10 +46,19 @@ export default function RegisterScreen() {
 
   useEffect(() => {
     if (GoogleSignin) {
-      GoogleSignin.configure({
-        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-        offlineAccess: true,
-      });
+      const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+      if (!webClientId) {
+        console.warn('EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID is not set; Google Sign-In will be unavailable.');
+        return;
+      }
+      try {
+        GoogleSignin.configure({
+          webClientId,
+          offlineAccess: true,
+        });
+      } catch (e) {
+        console.warn('GoogleSignin.configure failed:', e);
+      }
     }
   }, []);
 
