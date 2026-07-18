@@ -3,7 +3,10 @@ import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import { useEffect } from 'react';
+import * as SplashScreen from 'expo-splash-screen';
 
+// Keep the splash screen visible while we initialize
+SplashScreen.preventAutoHideAsync();
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
@@ -53,6 +56,13 @@ function RootLayoutNav() {
       setTimeout(() => router.replace('/login'), 0);
     }
   }, [token, isInitializing, router]);
+
+  // Hide the splash screen once auth state is known
+  useEffect(() => {
+    if (!isInitializing) {
+      SplashScreen.hideAsync();
+    }
+  }, [isInitializing]);
 
   if (isInitializing) {
     return null;

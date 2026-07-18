@@ -100,6 +100,29 @@ const Waveform = ({ active, color }: { active: boolean; color: string }) => (
   </View>
 );
 
+// Separate component so useVideoPlayer is only created when a video URL exists
+const VideoLightbox = ({ url, token }: { url: string; token: string | null }) => {
+  const player = useVideoPlayer(url, (p) => {
+    p.loop = false;
+    p.replace({
+      uri: url,
+      metadata: { title: "Video Message" },
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    p.play();
+  });
+
+  return (
+    <VideoView
+      player={player}
+      style={styles.fullMedia}
+      allowsFullscreen
+      allowsPictureInPicture
+      contentFit="contain"
+    />
+  );
+};
+
 // Optimized Message Component
 const MessageItem = memo(
   ({
@@ -1320,20 +1343,6 @@ export default function ChatScreen() {
     ],
   );
 
-  const player = useVideoPlayer(lightbox?.url || "", (player) => {
-    player.loop = false;
-    if (lightbox?.url) {
-      player.replace({
-        uri: lightbox.url,
-        metadata: { title: "Video Message" },
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      player.play();
-    }
-  });
-
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: colorScheme === 'dark' ? '#0B141A' : '#EFE7DE' }}
@@ -1465,13 +1474,7 @@ export default function ChatScreen() {
               <Ionicons name="close-circle" size={40} color="#fff" />
             </TouchableOpacity>
             {lightbox?.type === "video" ? (
-              <VideoView
-                player={player}
-                style={styles.fullMedia}
-                allowsFullscreen
-                allowsPictureInPicture
-                contentFit="contain"
-              />
+              <VideoLightbox url={lightbox.url} token={token} />
             ) : (
               <Image
                 source={{ uri: lightbox?.url }}
