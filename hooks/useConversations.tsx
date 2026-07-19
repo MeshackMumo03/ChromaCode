@@ -86,7 +86,7 @@ export function ConversationsProvider({ children }: { children: React.ReactNode 
     }
   }, [token]);
 
-  const markAsRead = async (conversationId: string) => {
+  const markAsRead = useCallback(async (conversationId: string) => {
     if (!token) return;
     try {
       const response = await fetch(`${BASE_URL}/conversations/${conversationId}/read`, {
@@ -105,7 +105,7 @@ export function ConversationsProvider({ children }: { children: React.ReactNode 
     } catch (error) {
       console.error('Error marking as read:', error);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     if (token) {

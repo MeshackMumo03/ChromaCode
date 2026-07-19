@@ -333,7 +333,8 @@ const uploadMessageMedia = asyncHandler(async (req, res) => {
   console.log(`uploadMessageMedia: Received file ${req.file.originalname} (${req.file.size} bytes)`);
 
   const responseData = { 
-    mediaUrl: `/uploads/${req.file.filename}`,
+    // multer-storage-cloudinary puts the permanent hosted URL on req.file.path
+    mediaUrl: req.file.path,
     fileName: req.file.originalname,
     fileSize: req.file.size,
     fileMimeType: req.file.mimetype,

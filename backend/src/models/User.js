@@ -59,6 +59,12 @@ const UserSchema = mongoose.Schema(
     verificationCode: {
       type: String,
     },
+    resetPasswordCode: {
+      type: String,
+    },
+    resetPasswordExpires: {
+      type: Date,
+    },
     isGoogleUser: {
       type: Boolean,
       default: false,

@@ -3,16 +3,13 @@ const router = express.Router();
 const userController = require('../controllers/userController'); // Import entire controller
 const protect = require('../middleware/authMiddleware'); // Import protect function
 const multer = require('multer');
-const path = require('path');
+const CloudinaryStorage = require('../config/cloudinaryStorage');
 
-// Configure multer for local storage
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
-  }
+// Upload profile pictures directly to Cloudinary instead of the server's
+// local disk, which is wiped on every Render restart/redeploy/spin-down.
+const storage = new CloudinaryStorage({
+  folder: 'chromacode/profile-pictures',
+  resourceType: 'image',
 });
 
 const upload = multer({ storage });
@@ -20,6 +17,8 @@ const upload = multer({ storage });
 router.route('/register').post(userController.registerUser);
 router.post('/login', userController.loginUser);
 router.post('/verify-email', userController.verifyEmail);
+router.post('/forgot-password', userController.forgotPassword);
+router.post('/reset-password', userController.resetPassword);
 router.post('/google-login', userController.googleLogin);
 
 router.get('/search', protect, userController.searchUsers);

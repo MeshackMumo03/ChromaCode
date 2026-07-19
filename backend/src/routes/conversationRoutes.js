@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const path = require('path');
+const CloudinaryStorage = require('../config/cloudinaryStorage');
 const {
     startConversation,
     getConversations,
@@ -19,15 +19,13 @@ const {
     deleteMessage
 } = require('../controllers/conversationController');
 
-// Configure multer for local storage
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        const uploadPath = path.resolve(__dirname, '../../uploads');
-        cb(null, uploadPath);
-    },
-    filename: (req, file, cb) => {
-        cb(null, `${Date.now()}-${file.originalname}`);
-    }
+// Upload chat media (images, video, audio, documents) directly to Cloudinary
+// instead of the server's local disk, which is wiped whenever Render's free
+// tier redeploys, restarts, or spins down from inactivity.
+const storage = new CloudinaryStorage({
+    folder: 'chromacode/messages',
+    // 'auto' lets Cloudinary detect image/video/raw (documents) automatically
+    resourceType: 'auto',
 });
 
 const upload = multer({ storage });

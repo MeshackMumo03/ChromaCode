@@ -754,6 +754,9 @@ export default function ChatScreen() {
           setConversation(data.conversation);
           setMessages(sorted);
           setHasMore(data.hasMore);
+          // Tell the server (and update the conversations list) that this
+          // conversation has now been read, so the unread badge clears.
+          markAsRead(id.toString());
           // Save to cache
           const safeMessages = (data.messages || []).map((m: any) => {
             const { mediaData, ...rest } = m;

@@ -46,6 +46,8 @@ const authLimiter = rateLimit({
 // Apply rate limiting to authentication routes
 app.use('/api/users/login', authLimiter);
 app.use('/api/users/register', authLimiter);
+app.use('/api/users/forgot-password', authLimiter);
+app.use('/api/users/reset-password', authLimiter);
 
 // CORS Configuration
 // For development, we allow all origins. In production, this should be restricted.

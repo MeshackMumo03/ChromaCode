@@ -19,6 +19,8 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   register: (username: string, email: string, password: string) => Promise<{ success: boolean; needsVerification?: boolean; email?: string }>;
   verifyEmail: (email: string, code: string) => Promise<boolean>;
+  forgotPassword: (email: string) => Promise<boolean>;
+  resetPassword: (email: string, code: string, newPassword: string) => Promise<boolean>;
   googleLogin: (userInfo: any) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
@@ -41,6 +43,8 @@ export function useAuth() {
       login: async () => false,
       register: async () => ({ success: false }),
       verifyEmail: async () => false,
+      forgotPassword: async () => false,
+      resetPassword: async () => false,
       googleLogin: async () => false,
       logout: () => {},
       isLoading: false,
@@ -175,6 +179,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const forgotPassword = async (email: string): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`${BASE_URL}/users/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      // The backend always responds with the same generic message whether
+      // or not the email exists, so a successful request here just means
+      // "the request went through" — not that an account was found.
+      return response.ok;
+    } catch (error) {
+      console.error('Network error requesting password reset:', error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resetPassword = async (email: string, code: string, newPassword: string): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`${BASE_URL}/users/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code, newPassword }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Log the user straight in, same as verifyEmail does.
+        setToken(data.token);
+        setUser(data);
+        await SecureStore.setItemAsync('userToken', data.token);
+        router.replace('/(tabs)');
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Network error resetting password:', error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const googleLogin = async (userInfo: any): Promise<boolean> => {
     try {
       setIsLoading(true);
@@ -258,7 +310,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [token]);
 
   return (
-    <AuthContext.Provider value={{ user, token, login, register, googleLogin, verifyEmail, logout, isLoading, isInitializing, updateUser, fetchUser }}>
+    <AuthContext.Provider value={{ user, token, login, register, googleLogin, verifyEmail, forgotPassword, resetPassword, logout, isLoading, isInitializing, updateUser, fetchUser }}>
       {children}
     </AuthContext.Provider>
   );

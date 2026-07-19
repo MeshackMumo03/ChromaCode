@@ -44,6 +44,32 @@ const sendVerificationEmail = async (email, code) => {
   }
 };
 
+const sendPasswordResetEmail = async (email, code) => {
+  const mailOptions = {
+    from: `"ChromaCode" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: 'ChromaCode - Reset Your Password',
+    html: `
+      <div style="font-family: sans-serif; padding: 20px; color: #333;">
+        <h2>Reset your ChromaCode password</h2>
+        <p>We received a request to reset the password for this account. Use the code below to continue:</p>
+        <div style="font-size: 32px; font-weight: bold; padding: 10px; background: #f4f4f4; text-align: center; letter-spacing: 5px;">
+          ${code}
+        </div>
+        <p>This code will expire in 10 minutes.</p>
+        <p>If you didn't request a password reset, you can safely ignore this email — your password will not be changed.</p>
+      </div>
+    `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`Password reset email sent to ${email}`);
+  } catch (error) {
+    console.error('Error sending email:', error);
+  }
+};
+
 // List of common disposable email domains to block bots
 const DISPOSABLE_EMAIL_DOMAINS = [
   'yopmail.com', 'mailinator.com', 'tempmail.com', 'guerrillamail.com', 
@@ -144,6 +170,88 @@ const verifyEmail = asyncHandler(async (req, res) => {
     email: user.email,
     token: generateToken(user._id),
     message: 'Email verified successfully!'
+  });
+});
+
+// @desc    Request a password reset code (sent to the account's email)
+// @route   POST /api/users/forgot-password
+// @access  Public
+const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    res.status(400);
+    throw new Error('Please provide an email address');
+  }
+
+  const user = await User.findOne({ email });
+
+  // Always respond the same way whether or not the account exists, so this
+  // endpoint can't be used to check which emails are registered.
+  const genericResponse = {
+    message: 'If an account exists for that email, a password reset code has been sent.',
+  };
+
+  if (!user) {
+    res.json(genericResponse);
+    return;
+  }
+
+  const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+  user.resetPasswordCode = resetCode;
+  user.resetPasswordExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+  await user.save();
+
+  sendPasswordResetEmail(email, resetCode);
+
+  res.json(genericResponse);
+});
+
+// @desc    Reset password using the emailed code
+// @route   POST /api/users/reset-password
+// @access  Public
+const resetPassword = asyncHandler(async (req, res) => {
+  const { email, code, newPassword } = req.body;
+
+  if (!email || !code || !newPassword) {
+    res.status(400);
+    throw new Error('Please provide your email, the reset code, and a new password');
+  }
+
+  if (newPassword.length < 6) {
+    res.status(400);
+    throw new Error('Password must be at least 6 characters long');
+  }
+
+  const user = await User.findOne({ email });
+
+  if (
+    !user ||
+    !user.resetPasswordCode ||
+    user.resetPasswordCode !== code ||
+    !user.resetPasswordExpires ||
+    user.resetPasswordExpires < Date.now()
+  ) {
+    res.status(400);
+    throw new Error('Invalid or expired reset code');
+  }
+
+  const salt = await bcrypt.genSalt(10);
+  user.password = await bcrypt.hash(newPassword, salt);
+  user.resetPasswordCode = undefined;
+  user.resetPasswordExpires = undefined;
+  await user.save();
+
+  // Log the user straight in after a successful reset, same as verifyEmail does.
+  res.json({
+    _id: user.id,
+    username: user.username,
+    email: user.email,
+    profilePicture: user.profilePicture,
+    friends: user.friends,
+    pushToken: user.pushToken,
+    token: generateToken(user._id),
+    message: 'Password reset successfully!',
   });
 });
 
@@ -484,16 +592,16 @@ const uploadImage = asyncHandler(async (req, res) => {
     throw new Error('Please upload an image');
   }
 
-  // Return the path that can be used to access the image
-  // We'll return just the relative path from the server root
-  const imagePath = `/uploads/${req.file.filename}`;
-  res.json({ imageUrl: imagePath });
+  // multer-storage-cloudinary puts the permanent hosted URL on req.file.path
+  res.json({ imageUrl: req.file.path });
 });
 
 module.exports = {
     registerUser,
     loginUser,
     verifyEmail,
+    forgotPassword,
+    resetPassword,
     googleLogin,
     getUsers,
     getUserProfile,
