@@ -25,6 +25,12 @@ if (!fs.existsSync(uploadsDir)) {
 
 const app = express();
 
+// Render (and most PaaS hosts) sit behind a reverse proxy, so Express needs
+// to be told to trust the X-Forwarded-For header it sets. Without this,
+// express-rate-limit can't reliably identify client IPs and logs a
+// validation warning on every request.
+app.set('trust proxy', 1);
+
 // Security Middleware
 app.use(helmet()); // Set security HTTP headers
 app.use((req, res, next) => {

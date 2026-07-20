@@ -17,6 +17,10 @@ const transporter = nodemailer.createTransport({
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
+  // Render's outbound network doesn't support IPv6 routing to Gmail's SMTP
+  // servers, which was causing ENETUNREACH errors when Node picked an IPv6
+  // address for smtp.gmail.com. Forcing IPv4 avoids that entirely.
+  family: 4,
 });
 
 const sendVerificationEmail = async (email, code) => {
