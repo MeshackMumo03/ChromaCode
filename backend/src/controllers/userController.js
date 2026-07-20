@@ -1,7 +1,6 @@
 const asyncHandler = require('express-async-handler');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
 const User = require('../models/User');
 
 // Security Check: Ensure environment variables are set
@@ -10,22 +9,52 @@ if (!process.env.JWT_SECRET) {
   process.exit(1);
 }
 
-// Configure nodemailer transporter
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-  // Render's outbound network doesn't support IPv6 routing to Gmail's SMTP
-  // servers, which was causing ENETUNREACH errors when Node picked an IPv6
-  // address for smtp.gmail.com. Forcing IPv4 avoids that entirely.
-  family: 4,
-});
+// Send an email via Brevo's HTTP API (https://brevo.com) instead of raw
+// SMTP. Render's free tier blocks all outbound traffic to SMTP ports
+// (25/465/587) at the network level, so Brevo's SMTP relay (port 587) can
+// never work there — Brevo's REST API sends over HTTPS (port 443), which
+// isn't blocked.
+//
+// NOTE: the "sender" email below must be added and verified as a Sender in
+// your Brevo dashboard (Settings -> Senders, Domains & Dedicated IPs ->
+// Senders) before this will work — Brevo rejects sends from unverified
+// sender addresses. This is separate from full domain verification; you
+// can verify a single email address without owning a domain, though full
+// domain verification (SPF/DKIM) improves deliverability and removes the
+// "Sent via Brevo" branding on outgoing emails.
+const BREVO_SENDER_EMAIL = process.env.BREVO_SENDER_EMAIL;
+const BREVO_SENDER_NAME = process.env.BREVO_SENDER_NAME || 'ChromaCode';
+
+const sendEmail = async ({ to, subject, html }) => {
+  try {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': process.env.BREVO_API_KEY,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { name: BREVO_SENDER_NAME, email: BREVO_SENDER_EMAIL },
+        to: [{ email: to }],
+        subject,
+        htmlContent: html,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(`Brevo API error (${response.status}): ${errorBody}`);
+    }
+
+    console.log(`Email sent to ${to}`);
+  } catch (error) {
+    console.error('Error sending email:', error);
+  }
+};
 
 const sendVerificationEmail = async (email, code) => {
-  const mailOptions = {
-    from: `"ChromaCode" <${process.env.EMAIL_USER}>`,
+  await sendEmail({
     to: email,
     subject: 'ChromaCode - Verify Your Account',
     html: `
@@ -38,19 +67,11 @@ const sendVerificationEmail = async (email, code) => {
         <p>This code will expire in 10 minutes.</p>
       </div>
     `,
-  };
-
-  try {
-    await transporter.sendMail(mailOptions);
-    console.log(`Verification email sent to ${email}`);
-  } catch (error) {
-    console.error('Error sending email:', error);
-  }
+  });
 };
 
 const sendPasswordResetEmail = async (email, code) => {
-  const mailOptions = {
-    from: `"ChromaCode" <${process.env.EMAIL_USER}>`,
+  await sendEmail({
     to: email,
     subject: 'ChromaCode - Reset Your Password',
     html: `
@@ -64,14 +85,7 @@ const sendPasswordResetEmail = async (email, code) => {
         <p>If you didn't request a password reset, you can safely ignore this email — your password will not be changed.</p>
       </div>
     `,
-  };
-
-  try {
-    await transporter.sendMail(mailOptions);
-    console.log(`Password reset email sent to ${email}`);
-  } catch (error) {
-    console.error('Error sending email:', error);
-  }
+  });
 };
 
 // List of common disposable email domains to block bots
