@@ -9,7 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/hooks/useAuth';
-import { getBaseUrl } from '@/constants/api';
+import { getBaseUrl, getImageUrl } from '@/constants/api';
 import { Image as ExpoImage } from 'expo-image';
 
 const BASE_URL = getBaseUrl();
@@ -164,7 +164,7 @@ export default function BlockedUsersScreen() {
               <View key={item._id} style={[styles.userItem, { borderBottomColor: colors.icon + '20' }]}>
                 <View style={styles.userInfo}>
                   <ExpoImage 
-                    source={{ uri: item.profilePicture || 'https://www.gravatar.com/avatar/?d=mp' }} 
+                    source={{ uri: getImageUrl(item.profilePicture) }} 
                     style={styles.avatar} 
                   />
                   <ThemedText style={styles.userName}>{item.username}</ThemedText>
@@ -189,7 +189,7 @@ export default function BlockedUsersScreen() {
               <View key={item._id} style={[styles.userItem, { borderBottomColor: colors.icon + '20' }]}>
                 <View style={styles.userInfo}>
                   <ExpoImage 
-                    source={{ uri: item.profilePicture || 'https://www.gravatar.com/avatar/?d=mp' }} 
+                    source={{ uri: getImageUrl(item.profilePicture) }} 
                     style={styles.avatar} 
                   />
                   <ThemedText style={styles.userName}>{item.username}</ThemedText>

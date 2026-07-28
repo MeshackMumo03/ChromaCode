@@ -9,7 +9,7 @@ import { useRouter, useNavigation } from 'expo-router';
 import { StyledButton } from '@/components/StyledButton'; // Import StyledButton
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { getBaseUrl } from '@/constants/api'; // Import getBaseUrl
+import { getBaseUrl, getImageUrl } from '@/constants/api'; // Import getBaseUrl and getImageUrl
 
 import * as ImagePicker from 'expo-image-picker';
 import { RefreshControl, Pressable, TouchableOpacity } from 'react-native';
@@ -119,12 +119,8 @@ export default function ProfileScreen() {
       });
       const data = await response.json();
       if (data.imageUrl) {
-        // The backend returns /uploads/filename. 
-        // BASE_URL already contains /api, but static files are served at /uploads.
-        const serverUrl = BASE_URL.replace('/api', '');
-        const fullUrl = `${serverUrl}${data.imageUrl}`;
-        setProfilePicture(fullUrl);
-        handleUpdateProfile(fullUrl);
+        setProfilePicture(data.imageUrl);
+        handleUpdateProfile(data.imageUrl);
       } else {
         console.error('Backend upload error:', data);
         Alert.alert('Upload Failed', data.message || 'Could not upload image.');
@@ -252,7 +248,7 @@ export default function ProfileScreen() {
           />
           <Pressable onPress={pickImage} style={styles.profilePictureContainer}>
               <ExpoImage 
-                source={{ uri: profilePicture || 'https://www.gravatar.com/avatar/?d=mp' }} 
+                source={{ uri: getImageUrl(profilePicture) }} 
                 style={styles.profileImage}
                 contentFit="cover"
                 transition={500}
@@ -274,7 +270,7 @@ export default function ProfileScreen() {
             {friendRequests.map((req) => (
               <View key={req._id} style={[styles.requestItem, { backgroundColor: colors.icon + '20' }]}>
                 <ExpoImage 
-                  source={{ uri: req.from.profilePicture || 'https://www.gravatar.com/avatar/?d=mp' }} 
+                  source={{ uri: getImageUrl(req.from?.profilePicture) }} 
                   style={styles.requestAvatar} 
                 />
                 <ThemedText style={styles.requestName}>{req.from.username}</ThemedText>

@@ -21,11 +21,35 @@ export const getBaseUrl = (): string => {
 };
 
 export const getImageUrl = (url?: string): string => {
-  if (!url) return 'https://www.gravatar.com/avatar/?d=mp';
-  if (url.startsWith('http')) return url;
-  const normalizedUrl = url.replace(/\\/g, '/');
+  if (!url || typeof url !== 'string' || !url.trim()) {
+    return 'https://www.gravatar.com/avatar/?d=mp';
+  }
+
+  let cleaned = url.trim().replace(/\\/g, '/');
+
+  // Fix double prepended URLs like https://server.comhttps://res.cloudinary.com/...
+  const lastHttp = cleaned.lastIndexOf('http://');
+  const lastHttps = cleaned.lastIndexOf('https://');
+  const lastHttpIndex = Math.max(lastHttp, lastHttps);
+  if (lastHttpIndex > 0) {
+    cleaned = cleaned.substring(lastHttpIndex);
+  }
+
+  // Handle server local uploads (/uploads/...)
+  if (cleaned.includes('/uploads/')) {
+    const relativePath = cleaned.substring(cleaned.indexOf('/uploads/'));
+    const baseUrl = getBaseUrl().replace('/api', '');
+    return `${baseUrl}${relativePath}`;
+  }
+
+  // Return direct external URLs (Cloudinary, Gravatar, Google, etc.)
+  if (cleaned.startsWith('http://') || cleaned.startsWith('https://')) {
+    return cleaned;
+  }
+
+  // Fallback relative URL
   const baseUrl = getBaseUrl().replace('/api', '');
-  return `${baseUrl}${normalizedUrl.startsWith('/') ? '' : '/'}${normalizedUrl}`;
+  return `${baseUrl}${cleaned.startsWith('/') ? '' : '/'}${cleaned}`;
 };
 
 // Lightweight fetch-based API client (replaces axios, no extra dependency needed)

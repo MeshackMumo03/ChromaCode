@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { getBaseUrl } from '@/constants/api';
+import { getBaseUrl, getImageUrl } from '@/constants/api';
 import { StyledButton } from '@/components/StyledButton';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -134,7 +134,7 @@ export default function CreateGroupScreen() {
                   onPress={() => toggleFriend(item._id)}
                 >
                   <Image 
-                    source={{ uri: item.profilePicture || 'https://www.gravatar.com/avatar/?d=mp' }} 
+                    source={{ uri: getImageUrl(item.profilePicture) }} 
                     style={styles.avatar} 
                   />
                   <ThemedText style={styles.friendName}>{item.username}</ThemedText>

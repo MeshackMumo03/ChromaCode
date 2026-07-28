@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRouter, useLocalSearchParams, useNavigation } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { getBaseUrl } from '@/constants/api';
+import { getBaseUrl, getImageUrl } from '@/constants/api';
 import { StyledButton } from '@/components/StyledButton';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -110,10 +110,8 @@ export default function GroupSettingsScreen() {
       });
       const data = await response.json();
       if (data.imageUrl) {
-        const serverUrl = BASE_URL.replace('/api', '');
-        const fullUrl = `${serverUrl}${data.imageUrl}`;
-        setGroupImage(fullUrl);
-        handleUpdateGroup(fullUrl);
+        setGroupImage(data.imageUrl);
+        handleUpdateGroup(data.imageUrl);
       } else {
         console.error('Backend upload error:', data);
         Alert.alert('Upload Failed', data.message || 'Could not upload image.');
@@ -226,7 +224,7 @@ export default function GroupSettingsScreen() {
         <View style={styles.avatarSection}>
           <Pressable onPress={pickImage} style={styles.imageContainer}>
             <ExpoImage 
-              source={{ uri: groupImage || 'https://cdn-icons-png.flaticon.com/512/166/166258.png' }} 
+              source={{ uri: getImageUrl(groupImage) || 'https://cdn-icons-png.flaticon.com/512/166/166258.png' }} 
               style={styles.largeAvatar} 
             />
             {isAdmin && (
@@ -259,7 +257,7 @@ export default function GroupSettingsScreen() {
           {conversation?.participants.map((p: any) => (
             <View key={p._id} style={styles.participantItem}>
               <Image 
-                source={{ uri: p.profilePicture || 'https://www.gravatar.com/avatar/?d=mp' }} 
+                source={{ uri: getImageUrl(p.profilePicture) }} 
                 style={styles.smallAvatar} 
               />
               <ThemedText style={styles.participantName}>{p.username}</ThemedText>
