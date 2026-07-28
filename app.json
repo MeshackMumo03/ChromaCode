@@ -48,8 +48,15 @@
       "expo-video",
       "expo-font",
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-updates"
     ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/8fb4d373-8dce-4372-b53f-c46c2a075f17"
+    },
     "experiments": {
       "typedRoutes": true
     },
