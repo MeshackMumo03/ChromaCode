@@ -38,6 +38,7 @@ backend/.env
 # Firebase / Google Keys
 service-account-key.json
 *.json.key
+google-services.json
 
 # typescript
 *.tsbuildinfo
