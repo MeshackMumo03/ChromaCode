@@ -1,7 +1,7 @@
 import { StyledButton } from "@/components/StyledButton";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { getBaseUrl, getImageUrl } from "@/constants/api";
+import { getBaseUrl, getImageUrl, getVideoThumbnailUrl, getGroupImageUrl } from "@/constants/api";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAuth } from "@/hooks/useAuth";
@@ -34,8 +34,8 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Image,
 } from "react-native";
+import { Image as ExpoImage } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import * as DocumentPicker from "expo-document-picker";
@@ -178,9 +178,10 @@ const MessageItem = memo(
           ]}
         >
           {!isMyMessage && (
-            <Image
+            <ExpoImage
               source={{ uri: getImageUrl(item.sender.profilePicture) }}
               style={styles.messageAvatar}
+              contentFit="cover"
             />
           )}
           <View style={styles.bubbleContainer}>
@@ -294,10 +295,10 @@ const MessageItem = memo(
                   }
                   activeOpacity={0.9}
                 >
-                  <Image
+                  <ExpoImage
                     source={{ uri: getImageUrl(item.mediaUrl) }}
                     style={styles.messageImage}
-                    resizeMode="cover"
+                    contentFit="cover"
                   />
                   <View style={[styles.timestampRow, styles.mediaTimestamp]}>
                     <ThemedText style={styles.timestamp}>
@@ -319,10 +320,10 @@ const MessageItem = memo(
                   }
                   activeOpacity={0.9}
                 >
-                  <Image
-                    source={{ uri: getImageUrl(item.mediaUrl) }}
+                  <ExpoImage
+                    source={{ uri: getVideoThumbnailUrl(item.mediaUrl) }}
                     style={styles.messageImage}
-                    resizeMode="cover"
+                    contentFit="cover"
                   />
                   <View style={styles.playOverlay}>
                     <Ionicons name="play" size={40} color="#fff" />
@@ -342,10 +343,10 @@ const MessageItem = memo(
                 </TouchableOpacity>
               ) : item.mediaType === "sticker" ? (
                 <View style={styles.stickerContainer}>
-                  <Image
+                  <ExpoImage
                     source={{ uri: getImageUrl(item.mediaUrl) }}
                     style={styles.stickerImage}
-                    resizeMode="contain"
+                    contentFit="contain"
                   />
                   <View style={[styles.timestampRow, styles.mediaTimestamp]}>
                     <ThemedText style={styles.timestamp}>
@@ -536,6 +537,8 @@ const MessageItem = memo(
       prevProps.item._id === nextProps.item._id &&
       prevProps.item.status === nextProps.item.status &&
       prevProps.item.text === nextProps.item.text &&
+      prevProps.item.mediaUrl === nextProps.item.mediaUrl &&
+      prevProps.item.reactions?.length === nextProps.item.reactions?.length &&
       prevProps.isMyMessage === nextProps.isMyMessage &&
       prevProps.showDateSeparator === nextProps.showDateSeparator &&
       prevProps.colorScheme === nextProps.colorScheme &&
@@ -645,14 +648,13 @@ export default function ChatScreen() {
   useEffect(() => {
     const title = conversation?.isGroup ? conversation.name : name || "Chat";
     const headerAvatar = conversation?.isGroup
-      ? conversation.groupImage ||
-        "https://cdn-icons-png.flaticon.com/512/166/166258.png"
+      ? getGroupImageUrl(conversation.groupImage)
       : getImageUrl(
           conversation?.participants?.find((p: any) => p._id !== user?._id)
             ?.profilePicture,
         ) ||
         (avatar as string) ||
-        "https://www.gravatar.com/avatar/?d=mp";
+        'https://www.gravatar.com/avatar/?d=mp';
 
     navigation.setOptions({
       headerLeft: () => (
@@ -665,9 +667,10 @@ export default function ChatScreen() {
       ),
       headerTitle: () => (
         <View style={styles.headerTitleContainer}>
-          <Image
+          <ExpoImage
             source={{ uri: headerAvatar }}
             style={styles.headerAvatar}
+            contentFit="cover"
           />
           <View>
             <ThemedText style={styles.headerUsername}>{title}</ThemedText>
@@ -1479,10 +1482,10 @@ export default function ChatScreen() {
             {lightbox?.type === "video" ? (
               <VideoLightbox url={lightbox.url} token={token} />
             ) : (
-              <Image
+              <ExpoImage
                 source={{ uri: lightbox?.url }}
                 style={styles.fullMedia}
-                resizeMode="contain"
+                contentFit="contain"
               />
             )}
           </View>

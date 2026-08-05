@@ -52,6 +52,34 @@ export const getImageUrl = (url?: string): string => {
   return `${baseUrl}${cleaned.startsWith('/') ? '' : '/'}${cleaned}`;
 };
 
+/**
+ * Generates a static JPEG thumbnail URL for a Cloudinary-hosted video.
+ * For non-Cloudinary videos the video URL itself is returned as a best-effort
+ * (React Native <Image> will fail silently, which is the same as before).
+ */
+export const getVideoThumbnailUrl = (videoUrl?: string): string => {
+  const url = getImageUrl(videoUrl);
+  if (url.includes('res.cloudinary.com')) {
+    // Swap resource type and strip to a JPEG frame at second 0
+    return url
+      .replace('/video/upload/', '/video/upload/so_0/')
+      .replace(/\.(mp4|mov|avi|mkv|webm)(\?.*)?$/i, '.jpg');
+  }
+  // Fallback: return the raw URL and hope the OS can generate a preview
+  return url;
+};
+
+/**
+ * Returns the avatar URL for a group conversation.
+ * Falls back to a generic group icon (not Gravatar) when no image is set.
+ */
+export const getGroupImageUrl = (groupImage?: string): string => {
+  if (!groupImage || !groupImage.trim()) {
+    return 'https://cdn-icons-png.flaticon.com/512/166/166258.png';
+  }
+  return getImageUrl(groupImage);
+};
+
 // Lightweight fetch-based API client (replaces axios, no extra dependency needed)
 let _authToken: string | null = null;
 

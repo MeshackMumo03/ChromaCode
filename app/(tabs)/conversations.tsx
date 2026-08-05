@@ -1,5 +1,6 @@
 import React, { useCallback, useState, useMemo } from 'react';
-import { StyleSheet, FlatList, TouchableOpacity, View, Image, RefreshControl, TextInput } from 'react-native';
+import { StyleSheet, FlatList, TouchableOpacity, View, RefreshControl, TextInput } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
@@ -10,7 +11,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useConversations, Conversation } from '@/hooks/useConversations';
 import { useSocket } from '@/hooks/useSocket';
 import { Ionicons } from '@expo/vector-icons';
-import { getImageUrl } from '@/constants/api';
+import { getImageUrl, getGroupImageUrl } from '@/constants/api';
 
 export default function ConversationsScreen() {
   const { user } = useAuth();
@@ -59,9 +60,9 @@ export default function ConversationsScreen() {
   };
 
   const getConversationAvatar = (conversation: Conversation) => {
-    if (conversation.isGroup) return conversation.groupImage || 'https://cdn-icons-png.flaticon.com/512/166/166258.png';
+    if (conversation.isGroup) return getGroupImageUrl(conversation.groupImage);
     const other = conversation.participants.find(p => p._id.toString() !== user?._id?.toString());
-    return other?.profilePicture || 'https://www.gravatar.com/avatar/?d=mp';
+    return getImageUrl(other?.profilePicture);
   };
 
   const formatTime = (timestamp: string) => {
@@ -143,9 +144,10 @@ export default function ConversationsScreen() {
                 })}
               >
                 <View>
-                  <Image
-                    source={{ uri: getImageUrl(item.isGroup ? item.groupImage : otherAvatar) }}
+                  <ExpoImage
+                    source={{ uri: item.isGroup ? getGroupImageUrl(item.groupImage) : getImageUrl(otherAvatar) }}
                     style={[styles.avatar, { backgroundColor: colors.icon + '10' }]}
+                    contentFit="cover"
                   />
                   {isOnline && <View style={styles.onlineDot} />}
                 </View>

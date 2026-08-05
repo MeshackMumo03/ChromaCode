@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, TextInput, Alert, TouchableOpacity, View, Image, ActivityIndicator, ScrollView, RefreshControl, Pressable } from 'react-native';
+import { StyleSheet, TextInput, Alert, TouchableOpacity, View, ActivityIndicator, ScrollView, RefreshControl, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
@@ -256,9 +256,10 @@ export default function GroupSettingsScreen() {
           <ThemedText style={styles.sectionTitle}>Participants ({conversation?.participants.length})</ThemedText>
           {conversation?.participants.map((p: any) => (
             <View key={p._id} style={styles.participantItem}>
-              <Image 
-                source={{ uri: getImageUrl(p.profilePicture) }} 
-                style={styles.smallAvatar} 
+              <ExpoImage
+                source={{ uri: getImageUrl(p.profilePicture) }}
+                style={styles.smallAvatar}
+                contentFit="cover"
               />
               <ThemedText style={styles.participantName}>{p.username}</ThemedText>
               {(conversation.groupAdmin === p._id || conversation.groupAdmin?._id === p._id) && (
