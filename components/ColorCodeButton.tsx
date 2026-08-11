@@ -9,6 +9,7 @@ import {
 import { ThemedText } from '@/components/themed-text';
 import { Code } from '@/constants/codes';
 import { Ionicons } from '@expo/vector-icons';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 type ColorCodeButtonProps = {
   code: Code;
@@ -23,12 +24,14 @@ type ColorCodeButtonProps = {
  * codes received in chat messages.
  */
 export function ColorCodeButton({ code, onPress, style }: ColorCodeButtonProps) {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   // Derive a slightly transparent version of the code color for the gradient overlay
   const colorHex = code.color || '#007AFF';
 
   return (
     <TouchableOpacity
-      style={[styles.card, style]}
+      style={[styles.card, style, { backgroundColor: isDark ? '#1C1C23' : '#FFFFFF' }]}
       onPress={onPress}
       activeOpacity={0.82}
     >
@@ -36,7 +39,7 @@ export function ColorCodeButton({ code, onPress, style }: ColorCodeButtonProps) 
       <View style={[styles.accentBar, { backgroundColor: colorHex }]} />
 
       {/* Subtle color wash behind the card content */}
-      <View style={[styles.colorWash, { backgroundColor: colorHex + '1A' }]} />
+      <View style={[styles.colorWash, { backgroundColor: colorHex + (isDark ? '11' : '1A') }]} />
 
       <View style={styles.content}>
         {/* Color swatch circle + name row */}

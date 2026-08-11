@@ -19,6 +19,9 @@ const MessageSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Code',
   },
+  presetCodeId: {
+    type: String,
+  },
   replyTo: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Message',

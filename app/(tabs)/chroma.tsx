@@ -9,6 +9,8 @@ import {
   RefreshControl,
   TouchableOpacity,
   Animated,
+  Easing,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '@/components/themed-view';
@@ -31,6 +33,140 @@ import { StyledButton } from '@/components/StyledButton';
 
 const BASE_URL = getBaseUrl();
 
+// ─────────────────────────────────────────────
+// Custom in-app Toast component
+// ─────────────────────────────────────────────
+type ToastType = 'success' | 'error' | 'info';
+
+interface ToastConfig {
+  visible: boolean;
+  message: string;
+  subtitle?: string;
+  type: ToastType;
+  accentColor?: string;
+}
+
+const TOAST_ICON: Record<ToastType, string> = {
+  success: 'checkmark-circle',
+  error: 'alert-circle',
+  info: 'information-circle',
+};
+
+const TOAST_BG: Record<ToastType, string> = {
+  success: '#12B76A',
+  error: '#F04438',
+  info: '#0EA5E9',
+};
+
+const InAppToast = ({
+  config,
+  onHide,
+  isDark,
+}: {
+  config: ToastConfig;
+  onHide: () => void;
+  isDark: boolean;
+}) => {
+  const translateY = useRef(new Animated.Value(-120)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (config.visible) {
+      // Slide in
+      Animated.parallel([
+        Animated.spring(translateY, {
+          toValue: 0,
+          useNativeDriver: true,
+          tension: 80,
+          friction: 10,
+        }),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Auto-dismiss after 3.5 s
+      const timer = setTimeout(() => {
+        Animated.parallel([
+          Animated.timing(translateY, {
+            toValue: -120,
+            duration: 300,
+            easing: Easing.in(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacity, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]).start(onHide);
+      }, 3500);
+
+      return () => clearTimeout(timer);
+    } else {
+      translateY.setValue(-120);
+      opacity.setValue(0);
+    }
+  }, [config.visible]);
+
+  if (!config.visible) return null;
+
+  const accentColor = config.accentColor || TOAST_BG[config.type];
+  const cardBg = isDark ? '#1C1C28' : '#FFFFFF';
+
+  return (
+    <Animated.View
+      style={[
+        styles.toastContainer,
+        {
+          transform: [{ translateY }],
+          opacity,
+        },
+      ]}
+      pointerEvents="none"
+    >
+      <View
+        style={[
+          styles.toastCard,
+          {
+            backgroundColor: cardBg,
+            shadowColor: accentColor,
+          },
+        ]}
+      >
+        {/* Left accent bar */}
+        <View style={[styles.toastAccent, { backgroundColor: accentColor }]} />
+
+        {/* Icon */}
+        <View style={[styles.toastIconWrap, { backgroundColor: accentColor + '22' }]}>
+          <Ionicons
+            name={TOAST_ICON[config.type] as any}
+            size={22}
+            color={accentColor}
+          />
+        </View>
+
+        {/* Text */}
+        <View style={styles.toastTextWrap}>
+          <ThemedText style={[styles.toastTitle, { color: isDark ? '#FFFFFF' : '#111827' }]}>
+            {config.message}
+          </ThemedText>
+          {config.subtitle ? (
+            <ThemedText style={[styles.toastSubtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+              {config.subtitle}
+            </ThemedText>
+          ) : null}
+        </View>
+      </View>
+    </Animated.View>
+  );
+};
+
+// ─────────────────────────────────────────────
+// Main Screen
+// ─────────────────────────────────────────────
 export default function ChromaScreen() {
   const { addHistoryItem } = useHistory();
   const { visibleCodes, addCodeToVisibleCodes } = useSettings();
@@ -45,6 +181,24 @@ export default function ChromaScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
   const isDark = colorScheme === 'dark';
+
+  // Toast state
+  const [toast, setToast] = useState<ToastConfig>({
+    visible: false,
+    message: '',
+    type: 'success',
+  });
+
+  const showToast = useCallback(
+    (message: string, type: ToastType = 'success', subtitle?: string, accentColor?: string) => {
+      setToast({ visible: true, message, subtitle, type, accentColor });
+    },
+    []
+  );
+
+  const hideToast = useCallback(() => {
+    setToast((prev) => ({ ...prev, visible: false }));
+  }, []);
 
   // FAB animation
   const fabScale = useRef(new Animated.Value(1)).current;
@@ -69,7 +223,7 @@ export default function ChromaScreen() {
   useEffect(() => {
     if (socket && user) {
       const handleNewMessage = async (data: any) => {
-        const hasCode = !!(data.message && data.message.codeId);
+        const hasCode = !!(data.message && (data.message.codeId || data.message.presetCodeId));
         const isSender =
           data.message.sender &&
           (data.message.sender._id === user._id || data.message.sender === user._id);
@@ -79,13 +233,17 @@ export default function ChromaScreen() {
           const codeName =
             typeof data.message.codeId === 'object' ? data.message.codeId.name : null;
           if (codeName) addCodeToVisibleCodes(codeName);
-          Alert.alert('New Code Received!', 'A new color code has been added to your library.');
+          showToast(
+            '🎨 New Code Received!',
+            'info',
+            codeName ? `"${codeName}" added to your library` : 'A new color code has been added',
+          );
         }
       };
       socket.on('new_message', handleNewMessage);
       return () => { socket.off('new_message', handleNewMessage); };
     }
-  }, [socket, user, fetchCodes, addCodeToVisibleCodes]);
+  }, [socket, user, fetchCodes, addCodeToVisibleCodes, showToast]);
 
   useEffect(() => {
     if (codes.length > 0) {
@@ -107,10 +265,15 @@ export default function ChromaScreen() {
 
   const handleUserSelect = async (recipientId: string, type: SelectionType) => {
     if (!selectedCode || !token) {
-      Alert.alert('Error', 'No code selected or not authenticated.');
+      showToast('No code selected or not authenticated.', 'error');
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    // Determine the correct codeId to send
+    // Preset codes have _id like "preset-0"; custom codes have a real MongoDB ObjectId
+    const isPreset = selectedCode._id && selectedCode._id.toString().startsWith('preset-');
+    const codeIdToSend = selectedCode._id;
 
     try {
       if (type === 'group') {
@@ -122,15 +285,20 @@ export default function ChromaScreen() {
           },
           body: JSON.stringify({
             text: `Shared the code: ${selectedCode.name} — ${selectedCode.meaning}`,
-            codeId: selectedCode._id,
+            codeId: codeIdToSend,
           }),
         });
         if (response.ok) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          Alert.alert('Success', 'Code sent to group!');
+          showToast(
+            'Code sent to group! 🎉',
+            'success',
+            `"${selectedCode.name}" shared successfully`,
+            selectedCode.color,
+          );
         } else {
           const data = await response.json();
-          Alert.alert('Send Failed', data.message || 'Could not send code to group.');
+          showToast(data.message || 'Could not send code to group.', 'error');
         }
       } else {
         const response = await fetch(`${BASE_URL}/conversations`, {
@@ -141,21 +309,26 @@ export default function ChromaScreen() {
           },
           body: JSON.stringify({
             recipientId,
-            text: `Sent you the code: ${selectedCode.name} - ${selectedCode.meaning}`,
-            codeId: selectedCode._id,
+            text: `Sent you the code: ${selectedCode.name} — ${selectedCode.meaning}`,
+            codeId: codeIdToSend,
           }),
         });
         const data = await response.json();
         if (response.ok) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          Alert.alert('Success', 'Code sent!');
+          showToast(
+            'Code sent! ✨',
+            'success',
+            `"${selectedCode.name}" delivered`,
+            selectedCode.color,
+          );
           addHistoryItem(selectedCode, data.conversation._id, recipientId);
         } else {
-          Alert.alert('Send Failed', data.message || 'Could not send code.');
+          showToast(data.message || 'Could not send code.', 'error');
         }
       }
     } catch (error) {
-      Alert.alert('Error', 'Network error while sending code.');
+      showToast('Network error while sending code.', 'error');
     }
 
     setModalVisible(false);
@@ -182,6 +355,9 @@ export default function ChromaScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
+        {/* ── Custom Toast ── */}
+        <InAppToast config={toast} onHide={hideToast} isDark={isDark} />
+
         {/* ── Page header ── */}
         <View style={[styles.pageHeader, { backgroundColor: isDark ? '#0F0F1A' : '#F7F8FF' }]}>
           <View>
@@ -206,7 +382,7 @@ export default function ChromaScreen() {
             >
               {/* Color accent bar */}
               <View style={[styles.previewAccentBar, { backgroundColor: selectedCode.color }]} />
-              <View style={[styles.previewColorWash, { backgroundColor: selectedCode.color + '15' }]} />
+              <View style={[styles.previewColorWash, { backgroundColor: selectedCode.color + (isDark ? '0D' : '15') }]} />
 
               <View style={styles.previewContent}>
                 <View style={styles.previewHeaderRow}>
@@ -298,6 +474,53 @@ export default function ChromaScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  // ── Toast ──
+  toastContainer: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 0 : 8,
+    left: 16,
+    right: 16,
+    zIndex: 9999,
+  },
+  toastCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 18,
+    overflow: 'hidden',
+    elevation: 12,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 14,
+    minHeight: 68,
+  },
+  toastAccent: {
+    width: 5,
+    alignSelf: 'stretch',
+  },
+  toastIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 12,
+    marginRight: 10,
+    flexShrink: 0,
+  },
+  toastTextWrap: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingRight: 16,
+  },
+  toastTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.1,
+  },
+  toastSubtitle: {
+    fontSize: 12,
+    marginTop: 2,
   },
   // ── Header ──
   pageHeader: {

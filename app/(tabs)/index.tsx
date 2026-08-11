@@ -18,8 +18,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { getBaseUrl } from '@/constants/api';
+import { getBaseUrl, getImageUrl } from '@/constants/api';
 import { Ionicons } from '@expo/vector-icons';
+import { Image as ExpoImage } from 'expo-image';
 
 const BASE_URL = getBaseUrl();
 
@@ -65,10 +66,12 @@ function getGreeting(): string {
 
 const AvatarBubble = ({
   username,
+  profilePicture,
   size = 52,
   style,
 }: {
   username: string;
+  profilePicture?: string;
   size?: number;
   style?: any;
 }) => {
@@ -87,11 +90,19 @@ const AvatarBubble = ({
         style,
       ]}
     >
-      <ThemedText
-        style={{ color: '#fff', fontWeight: '800', fontSize: size * 0.34 }}
-      >
-        {getInitials(username)}
-      </ThemedText>
+      {profilePicture ? (
+        <ExpoImage
+          source={{ uri: getImageUrl(profilePicture) }}
+          style={{ width: size, height: size, borderRadius: size / 2 }}
+          contentFit="cover"
+        />
+      ) : (
+        <ThemedText
+          style={{ color: '#fff', fontWeight: '800', fontSize: size * 0.34 }}
+        >
+          {getInitials(username)}
+        </ThemedText>
+      )}
     </View>
   );
 };
@@ -142,7 +153,7 @@ const FriendPrismCard = ({
 
         {/* Avatar */}
         <View style={styles.cardAvatarContainer}>
-          <AvatarBubble username={friend.username} size={50} />
+          <AvatarBubble username={friend.username} profilePicture={friend.profilePicture} size={50} />
           {/* Pulsing online dot placeholder */}
           <View
             style={[styles.onlineDot, { borderColor: colorScheme === 'dark' ? '#1E1E2E' : '#fff' }]}
@@ -192,7 +203,7 @@ const SearchResultRow = ({
         },
       ]}
     >
-      <AvatarBubble username={item.username} size={40} />
+      <AvatarBubble username={item.username} profilePicture={item.profilePicture} size={40} />
       <View style={styles.searchRowInfo}>
         <ThemedText style={[styles.searchRowName, { color: colors.text }]}>
           {item.username}
@@ -304,11 +315,12 @@ export default function HomeScreen() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ recipientId: friendId, text: 'Hi!' }),
+        // No text: the backend will open the existing conversation or create one
+        body: JSON.stringify({ recipientId: friendId }),
       });
       const data = await response.json();
-      if (response.ok && data.conversation?._id) {
-        router.push(`/chat/${data.conversation._id}`);
+      if ((response.ok || response.status === 200) && data.conversation?._id) {
+        router.push(`/chat/${data.conversation._id}` as any);
       } else {
         Alert.alert('Error', data.message || `Failed to start chat with ${friendUsername}.`);
       }
@@ -405,8 +417,8 @@ export default function HomeScreen() {
               style={{ marginRight: 8 }}
             />
             <TextInput
-              style={[styles.searchInput, { color: colors.text }]}
-              placeholder="Search by username..."
+              style={[styles.searchInput, { color: colors.text, flex: 1 }]}
+              placeholder="Search users..."
               placeholderTextColor={colors.icon}
               value={searchTerm}
               onChangeText={handleSearchChange}

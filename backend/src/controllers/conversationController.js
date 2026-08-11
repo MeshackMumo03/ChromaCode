@@ -7,7 +7,32 @@ const Code = require('../models/Code');
 const { PRESET_CODES } = require('../constants/presetCodes');
 const { sendPushNotification } = require('../utils/notifications');
 
-// @desc    Start new conversation
+/**
+ * Manually populate preset codes into the message object.
+ * Preset codes are not DB records so cannot be populated via Mongoose.
+ * Mutates msgObj in-place and returns it.
+ */
+const populatePresetCodeObj = (msgObj) => {
+  const applyPreset = (obj) => {
+    if (obj && obj.presetCodeId && typeof obj.presetCodeId === 'string' && obj.presetCodeId.startsWith('preset-')) {
+      const idx = parseInt(obj.presetCodeId.split('-')[1], 10);
+      const preset = PRESET_CODES[idx];
+      if (preset) {
+        obj.codeId = {
+          _id: obj.presetCodeId,
+          name: preset.name,
+          color: preset.color,
+          meaning: preset.meaning,
+        };
+      }
+    }
+  };
+  applyPreset(msgObj);
+  if (msgObj.replyTo) applyPreset(msgObj.replyTo);
+  return msgObj;
+};
+
+// @desc    Start new conversation OR navigate to existing one (1-on-1)
 // @route   POST /api/conversations
 // @access  Private
 const startConversation = asyncHandler(async (req, res) => {
@@ -19,20 +44,18 @@ const startConversation = asyncHandler(async (req, res) => {
     throw new Error('Recipient is required');
   }
 
-  if (!text && !mediaUrl && !mediaData) {
-    res.status(400);
-    throw new Error('Message content is required');
-  }
-
   const recipient = await User.findById(recipientId);
   if (!recipient && recipientId) {
     res.status(404);
     throw new Error('Recipient not found');
   }
 
+  // Find existing 1-on-1 conversation
   let conversation = await Conversation.findOne({
     participants: { $all: [senderId, recipientId], $size: 2 },
   });
+
+  const conversationAlreadyExists = !!conversation;
 
   if (!conversation) {
     conversation = await Conversation.create({
@@ -40,7 +63,21 @@ const startConversation = asyncHandler(async (req, res) => {
     });
   }
 
-  const validCodeId = codeId && mongoose.Types.ObjectId.isValid(codeId) ? codeId : null;
+  // If conversation already existed and no message/code content was provided,
+  // just navigate to it without sending a redundant "Hi!" message.
+  if (conversationAlreadyExists && !text && !codeId && !mediaUrl && !mediaData) {
+    await conversation.populate('participants', 'username profilePicture');
+    return res.status(200).json({ conversation, message: null });
+  }
+
+  // Require message content only if we actually intend to send a message
+  if (!text && !mediaUrl && !mediaData && !codeId) {
+    res.status(400);
+    throw new Error('Message content is required');
+  }
+
+  const isPreset = codeId && typeof codeId === 'string' && codeId.startsWith('preset-');
+  const validCodeId = !isPreset && codeId && mongoose.Types.ObjectId.isValid(codeId) ? codeId : null;
   const validReplyTo = replyTo && mongoose.Types.ObjectId.isValid(replyTo) ? replyTo : null;
 
   // Handle media data
@@ -54,6 +91,7 @@ const startConversation = asyncHandler(async (req, res) => {
     sender: senderId,
     text: text || '',
     codeId: validCodeId,
+    presetCodeId: isPreset ? codeId : undefined,
     replyTo: validReplyTo,
     mediaType: mediaType || 'none',
     mediaUrl: mediaUrl || '',
@@ -89,12 +127,13 @@ const startConversation = asyncHandler(async (req, res) => {
   conversation.updatedAt = new Date();
   await conversation.save();
 
+  // For real-time response, strip binary data and inject preset code info
+  let socketMessage = message.toObject();
+  delete socketMessage.mediaData;
+  socketMessage = populatePresetCodeObj(socketMessage);
+
   // Emit socket event to ALL participants (including sender for sync)
   const io = req.app.get('io');
-  
-  // For real-time response, we don't want to send the entire buffer back if it's large
-  const socketMessage = message.toObject();
-  delete socketMessage.mediaData;
 
   // Emit to all participants (including the sender for conversation list sync)
   conversation.participants.forEach(participantId => {
@@ -112,9 +151,9 @@ const startConversation = asyncHandler(async (req, res) => {
     { conversationId: conversation._id }
   );
 
-  // Propagate custom code to recipient
-  if (codeId) {
-    await propagateCode(codeId, recipientId);
+  // Propagate custom code to recipient (not needed for presets — they're universal)
+  if (validCodeId) {
+    await propagateCode(validCodeId, recipientId);
   }
 
   res.status(201).json({
@@ -219,10 +258,13 @@ const getConversation = asyncHandler(async (req, res) => {
     .limit(limit)
     .lean();
 
+  // Inject preset code details for any message that uses a preset
+  const populatedMessages = messages.map(msg => populatePresetCodeObj(msg));
+
   // Return messages in chronological order for the frontend
   res.json({ 
     conversation, 
-    messages: messages.reverse(),
+    messages: populatedMessages.reverse(),
     hasMore: messages.length === limit
   });
 });
@@ -260,7 +302,8 @@ const sendMessage = asyncHandler(async (req, res) => {
     throw new Error('You cannot send messages to this conversation because you are blocked.');
   }
 
-  const validCodeId = codeId && mongoose.Types.ObjectId.isValid(codeId) ? codeId : null;
+  const isPreset = codeId && typeof codeId === 'string' && codeId.startsWith('preset-');
+  const validCodeId = !isPreset && codeId && mongoose.Types.ObjectId.isValid(codeId) ? codeId : null;
   const validReplyTo = replyTo && mongoose.Types.ObjectId.isValid(replyTo) ? replyTo : null;
 
   // If mediaData is provided in Base64 (from frontend), convert to Buffer
@@ -274,6 +317,7 @@ const sendMessage = asyncHandler(async (req, res) => {
     sender: senderId,
     text: text || '',
     codeId: validCodeId,
+    presetCodeId: isPreset ? codeId : undefined,
     replyTo: validReplyTo,
     mediaType: mediaType || 'none',
     mediaUrl: mediaUrl || '',
@@ -304,9 +348,10 @@ const sendMessage = asyncHandler(async (req, res) => {
     }
   ]);
 
-  // For real-time response, we don't want to send the entire buffer back if it's large
-  const socketMessage = message.toObject();
+  // For real-time response, strip binary data and inject preset code info
+  let socketMessage = message.toObject();
   delete socketMessage.mediaData;
+  socketMessage = populatePresetCodeObj(socketMessage);
 
   // Explicitly update lastMessage and updatedAt to force sorting to work
   conversation.lastMessage = message._id;
