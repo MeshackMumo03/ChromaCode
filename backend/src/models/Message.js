@@ -19,6 +19,10 @@ const MessageSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Code',
   },
+  replyTo: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Message',
+  },
   mediaType: {
     type: String,
     enum: ['none', 'image', 'voice', 'document', 'sticker', 'video', 'audio', 'gif'],

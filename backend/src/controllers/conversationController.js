@@ -11,7 +11,7 @@ const { sendPushNotification } = require('../utils/notifications');
 // @route   POST /api/conversations
 // @access  Private
 const startConversation = asyncHandler(async (req, res) => {
-  const { recipientId, text, codeId, mediaType, mediaUrl, mediaData, fileName, fileSize, fileMimeType } = req.body;
+  const { recipientId, text, codeId, replyTo, mediaType, mediaUrl, mediaData, fileName, fileSize, fileMimeType } = req.body;
   const senderId = req.user._id;
 
   if (!recipientId && !req.body.participants) {
@@ -41,6 +41,7 @@ const startConversation = asyncHandler(async (req, res) => {
   }
 
   const validCodeId = codeId && mongoose.Types.ObjectId.isValid(codeId) ? codeId : null;
+  const validReplyTo = replyTo && mongoose.Types.ObjectId.isValid(replyTo) ? replyTo : null;
 
   // Handle media data
   let bufferData = null;
@@ -53,6 +54,7 @@ const startConversation = asyncHandler(async (req, res) => {
     sender: senderId,
     text: text || '',
     codeId: validCodeId,
+    replyTo: validReplyTo,
     mediaType: mediaType || 'none',
     mediaUrl: mediaUrl || '',
     mediaData: bufferData,
@@ -68,10 +70,18 @@ const startConversation = asyncHandler(async (req, res) => {
 
   await message.save();
 
-  // Populate the sender and codeId fields before sending the message in the response
+  // Populate the sender, codeId, and replyTo fields before sending the message in the response
   await message.populate([
     { path: 'sender', select: 'username profilePicture' },
-    { path: 'codeId' }
+    { path: 'codeId' },
+    {
+      path: 'replyTo',
+      select: '-mediaData',
+      populate: [
+        { path: 'sender', select: 'username profilePicture' },
+        { path: 'codeId' }
+      ]
+    }
   ]);
 
   // Explicitly update lastMessage and updatedAt to force sorting to work
@@ -196,6 +206,14 @@ const getConversation = asyncHandler(async (req, res) => {
     .select('-mediaData')
     .populate('sender', 'username profilePicture')
     .populate('codeId')
+    .populate({
+      path: 'replyTo',
+      select: '-mediaData',
+      populate: [
+        { path: 'sender', select: 'username profilePicture' },
+        { path: 'codeId' }
+      ]
+    })
     .sort({ createdAt: -1 }) // Get newest first for pagination
     .skip(skip)
     .limit(limit)
@@ -211,9 +229,9 @@ const getConversation = asyncHandler(async (req, res) => {
 
 // @desc    Send a message in a conversation
 // @route   POST /api/conversations/:id/messages
-// // @access  Private
+// @access  Private
 const sendMessage = asyncHandler(async (req, res) => {
-  const { text, codeId, mediaType, mediaUrl, mediaData, fileName, fileSize, fileMimeType } = req.body;
+  const { text, codeId, replyTo, mediaType, mediaUrl, mediaData, fileName, fileSize, fileMimeType } = req.body;
   const senderId = req.user._id;
   const conversationId = req.params.id;
 
@@ -243,6 +261,7 @@ const sendMessage = asyncHandler(async (req, res) => {
   }
 
   const validCodeId = codeId && mongoose.Types.ObjectId.isValid(codeId) ? codeId : null;
+  const validReplyTo = replyTo && mongoose.Types.ObjectId.isValid(replyTo) ? replyTo : null;
 
   // If mediaData is provided in Base64 (from frontend), convert to Buffer
   let bufferData = null;
@@ -255,6 +274,7 @@ const sendMessage = asyncHandler(async (req, res) => {
     sender: senderId,
     text: text || '',
     codeId: validCodeId,
+    replyTo: validReplyTo,
     mediaType: mediaType || 'none',
     mediaUrl: mediaUrl || '',
     mediaData: bufferData,
@@ -270,10 +290,18 @@ const sendMessage = asyncHandler(async (req, res) => {
 
   await message.save();
 
-  // Populate the sender and codeId fields before sending the message in the response
+  // Populate the sender, codeId, and replyTo fields before sending the message in the response
   await message.populate([
     { path: 'sender', select: 'username profilePicture' },
-    { path: 'codeId' }
+    { path: 'codeId' },
+    {
+      path: 'replyTo',
+      select: '-mediaData',
+      populate: [
+        { path: 'sender', select: 'username profilePicture' },
+        { path: 'codeId' }
+      ]
+    }
   ]);
 
   // For real-time response, we don't want to send the entire buffer back if it's large

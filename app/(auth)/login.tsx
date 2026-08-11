@@ -5,7 +5,7 @@ import { StyledButton } from '@/components/StyledButton';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'expo-router';
+import { useRouter, Href } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
@@ -145,7 +145,7 @@ export default function LoginScreen() {
             secureTextEntry
           />
 
-          <TouchableOpacity onPress={() => router.push('/forgot-password')} style={styles.forgotPasswordContainer}>
+          <TouchableOpacity onPress={() => router.push('/forgot-password' as Href)} style={styles.forgotPasswordContainer}>
             <ThemedText style={[styles.forgotPasswordText, { color: colors.tint }]}>
               Forgot Password?
             </ThemedText>

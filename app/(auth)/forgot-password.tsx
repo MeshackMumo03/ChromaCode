@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'expo-router';
+import { useRouter, Href } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { StyledButton } from '@/components/StyledButton';
@@ -28,7 +28,7 @@ export default function ForgotPasswordScreen() {
         'Check Your Email',
         'If an account exists for that email, a password reset code has been sent to it.'
       );
-      router.push({ pathname: '/reset-password', params: { email } });
+      router.push({ pathname: '/reset-password' as any, params: { email } });
     } else {
       Alert.alert('Error', 'Something went wrong. Please check your connection and try again.');
     }

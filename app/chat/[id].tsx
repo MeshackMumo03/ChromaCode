@@ -24,10 +24,12 @@ import React, {
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   FlatList,
   KeyboardAvoidingView,
   Linking,
   Modal,
+  PanResponder,
   Platform,
   Pressable,
   StyleSheet,
@@ -74,6 +76,7 @@ interface Message {
   fileMimeType?: string;
   timestamp: string;
   reactions?: { emoji: string; userId: string }[];
+  replyTo?: Message;
 }
 
 const Waveform = ({ active, color }: { active: boolean; color: string }) => (
@@ -123,7 +126,7 @@ const VideoLightbox = ({ url, token }: { url: string; token: string | null }) =>
   );
 };
 
-// Optimized Message Component
+// Optimized Message Component — supports swipe-right-to-reply via PanResponder
 const MessageItem = memo(
   ({
     item,
@@ -141,8 +144,62 @@ const MessageItem = memo(
     openDocument,
     onLongPress,
     onMediaPress,
+    onSwipeReply,
   }: any) => {
     const lastTap = useRef(0);
+
+    // ── Swipe-right-to-reply (PanResponder) ──────────────────────────────────
+    const swipeX = useRef(new Animated.Value(0)).current;
+    const swipeTriggered = useRef(false);
+    const SWIPE_THRESHOLD = 60;
+
+    const panResponder = useRef(
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+          // Only capture significant horizontal motion that is more horizontal than vertical
+          Math.abs(gestureState.dx) > 8 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.5,
+        onPanResponderGrant: () => {
+          swipeTriggered.current = false;
+        },
+        onPanResponderMove: (_, gestureState) => {
+          // Only allow swipe in the "away from edge" direction: right for their messages, left for mine
+          const dx = isMyMessage ? Math.min(0, gestureState.dx) : Math.max(0, gestureState.dx);
+          const clamped = isMyMessage
+            ? Math.max(-SWIPE_THRESHOLD * 1.2, dx)
+            : Math.min(SWIPE_THRESHOLD * 1.2, dx);
+          swipeX.setValue(clamped);
+          // Trigger reply haptic once at threshold
+          if (!swipeTriggered.current && Math.abs(clamped) >= SWIPE_THRESHOLD) {
+            swipeTriggered.current = true;
+          }
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          // If passed threshold, trigger reply callback
+          const dx = isMyMessage ? gestureState.dx : gestureState.dx;
+          if (Math.abs(dx) >= SWIPE_THRESHOLD && onSwipeReply) {
+            onSwipeReply(item);
+          }
+          // Snap back
+          Animated.spring(swipeX, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 200,
+            friction: 20,
+          }).start();
+          swipeTriggered.current = false;
+        },
+        onPanResponderTerminate: () => {
+          Animated.spring(swipeX, { toValue: 0, useNativeDriver: true }).start();
+        },
+      }),
+    ).current;
+
+    // Reply arrow opacity: fades in as you swipe
+    const replyArrowOpacity = swipeX.interpolate({
+      inputRange: isMyMessage ? [-SWIPE_THRESHOLD, 0] : [0, SWIPE_THRESHOLD],
+      outputRange: [1, 0],
+      extrapolate: 'clamp',
+    });
 
     const handlePress = () => {
       const now = Date.now();
@@ -171,12 +228,31 @@ const MessageItem = memo(
             <View style={[styles.dateLine, { backgroundColor: colors.icon }]} />
           </View>
         )}
-        <View
+        {/* Swipeable row wrapper */}
+        <Animated.View
           style={[
             styles.messageWrapper,
             isMyMessage ? styles.myMessageWrapper : styles.theirMessageWrapper,
+            { transform: [{ translateX: swipeX }] },
           ]}
+          {...panResponder.panHandlers}
         >
+          {/* Reply arrow indicator (appears on swipe from the side) */}
+          {!isMyMessage && (
+            <Animated.View style={[styles.replyArrow, { opacity: replyArrowOpacity, left: -36 }]}>
+              <View style={[styles.replyArrowCircle, { backgroundColor: colors.tint + '22' }]}>
+                <Ionicons name="arrow-undo" size={16} color={colors.tint} />
+              </View>
+            </Animated.View>
+          )}
+          {isMyMessage && (
+            <Animated.View style={[styles.replyArrow, { opacity: replyArrowOpacity, right: -36 }]}>
+              <View style={[styles.replyArrowCircle, { backgroundColor: colors.tint + '22' }]}>
+                <Ionicons name="arrow-undo" size={16} color={colors.tint} />
+              </View>
+            </Animated.View>
+          )}
+
           {!isMyMessage && (
             <ExpoImage
               source={{ uri: getImageUrl(item.sender.profilePicture) }}
@@ -230,10 +306,56 @@ const MessageItem = memo(
                       : "flex-start",
                   marginVertical: item.codeId ? 10 : 2,
                   elevation: item.codeId ? 3 : 0,
-                  overflow: "hidden",
                 },
               ]}
             >
+              {item.replyTo && (
+                <View
+                  style={[
+                    styles.quotedBox,
+                    {
+                      borderLeftColor: isMyMessage ? '#FFF' : colors.tint,
+                      backgroundColor: isMyMessage
+                        ? 'rgba(255, 255, 255, 0.2)'
+                        : colorScheme === 'dark'
+                          ? 'rgba(255, 255, 255, 0.08)'
+                          : 'rgba(0, 0, 0, 0.05)',
+                    },
+                  ]}
+                >
+                  <ThemedText
+                    style={[
+                      styles.quotedAuthor,
+                      { color: isMyMessage ? '#FFF' : colors.tint },
+                    ]}
+                  >
+                    {item.replyTo.sender?.username || 'User'}
+                  </ThemedText>
+                  <ThemedText
+                    style={[
+                      styles.quotedText,
+                      {
+                        color: isMyMessage
+                          ? 'rgba(255,255,255,0.9)'
+                          : colors.text,
+                      },
+                    ]}
+                    numberOfLines={2}
+                  >
+                    {item.replyTo.codeId
+                      ? `🎨 Code: ${item.replyTo.codeId.name}`
+                      : item.replyTo.mediaType === 'image'
+                        ? '📷 Photo'
+                        : item.replyTo.mediaType === 'video'
+                          ? '🎥 Video'
+                          : item.replyTo.mediaType === 'voice' || item.replyTo.mediaType === 'audio'
+                            ? '🎤 Voice Note'
+                            : item.replyTo.mediaType === 'document'
+                              ? `📄 ${item.replyTo.fileName || 'Document'}`
+                              : item.replyTo.text || 'Message'}
+                  </ThemedText>
+                </View>
+              )}
               {item.codeId ? (
                 <TouchableOpacity
                   onPress={() => setPeekCode(item.codeId)}
@@ -554,7 +676,7 @@ const MessageItem = memo(
               </View>
             )}
           </View>
-        </View>
+        </Animated.View>
       </View>
     );
   },
@@ -610,6 +732,7 @@ export default function ChatScreen() {
   } | null>(null);
   const [isOnline, setIsOnline] = useState(false);
   const [customEmojiInput, setCustomEmojiInput] = useState('');
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
 
   const updateCache = useCallback(
     async (msgs: Message[]) => {
@@ -1185,6 +1308,9 @@ export default function ChatScreen() {
     if (!newMessage.trim() || !token || !id || !user) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
+    const currentReplyTo = replyingTo;
+    setReplyingTo(null);
+
     const tempId = Date.now().toString();
     const optimisticMsg: Message = {
       _id: tempId,
@@ -1195,6 +1321,7 @@ export default function ChatScreen() {
       },
       text: newMessage,
       mediaType: "none",
+      replyTo: currentReplyTo || undefined,
       timestamp: new Date().toISOString(),
       status: "sent",
     };
@@ -1213,7 +1340,10 @@ export default function ChatScreen() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ text: optimisticMsg.text }),
+        body: JSON.stringify({ 
+          text: optimisticMsg.text,
+          replyTo: currentReplyTo?._id 
+        }),
       });
       const data = await response.json();
       if (response.ok) {
@@ -1226,7 +1356,7 @@ export default function ChatScreen() {
       console.error("Network error during sending message:", error);
       setMessages((prev) => prev.filter((m) => m._id !== tempId));
     }
-  }, [newMessage, token, id, user, BASE_URL]);
+  }, [newMessage, token, id, user, replyingTo, BASE_URL]);
 
   const addReaction = useCallback(
     async (messageId: string, emoji: string) => {
@@ -1361,6 +1491,9 @@ export default function ChatScreen() {
           openDocument={openDocument}
           onLongPress={onLongPress}
           onMediaPress={onMediaPress}
+          onSwipeReply={(m: any) => {
+            setReplyingTo(m);
+          }}
         />
       );
     },
@@ -1497,6 +1630,26 @@ export default function ChatScreen() {
                   <ThemedText style={{ fontSize: 18 }}>➤</ThemedText>
                 </TouchableOpacity>
               </View>
+              <TouchableOpacity
+                onPress={() => {
+                  if (selectedMessage) {
+                    setReplyingTo(selectedMessage);
+                    setShowMenu(false);
+                  }
+                }}
+                style={styles.menuActionBtn}
+              >
+                <Ionicons name="arrow-undo-outline" size={22} color={colors.tint} />
+                <ThemedText
+                  style={{
+                    color: colors.text,
+                    marginLeft: 10,
+                    fontWeight: "600",
+                  }}
+                >
+                  Reply
+                </ThemedText>
+              </TouchableOpacity>
               {selectedMessage?.sender._id === user?._id && (
                 <TouchableOpacity
                   onPress={() => deleteMsg(selectedMessage!._id)}
@@ -1554,6 +1707,27 @@ export default function ChatScreen() {
             >
               {typingUser} is typing...
             </ThemedText>
+          )}
+
+          {replyingTo && (
+            <View style={[styles.replyPreviewContainer, { backgroundColor: colorScheme === 'dark' ? '#1F2C34' : '#F0F2F5', borderLeftColor: colors.tint }]}>
+              <View style={{ flex: 1 }}>
+                <ThemedText style={[styles.replyPreviewAuthor, { color: colors.tint }]}>
+                  Replying to {replyingTo.sender?.username || 'User'}
+                </ThemedText>
+                <ThemedText style={[styles.replyPreviewText, { color: colors.text }]} numberOfLines={1}>
+                  {replyingTo.codeId ? `🎨 Code: ${replyingTo.codeId.name}` :
+                   replyingTo.mediaType === 'image' ? '📷 Photo' :
+                   replyingTo.mediaType === 'video' ? '🎥 Video' :
+                   replyingTo.mediaType === 'voice' || replyingTo.mediaType === 'audio' ? '🎤 Voice Note' :
+                   replyingTo.mediaType === 'document' ? `📄 ${replyingTo.fileName || 'Document'}` :
+                   replyingTo.text || 'Message'}
+                </ThemedText>
+              </View>
+              <TouchableOpacity onPress={() => setReplyingTo(null)} style={styles.replyCloseButton}>
+                <Ionicons name="close-circle" size={22} color={colors.icon} />
+              </TouchableOpacity>
+            </View>
           )}
           <View
             style={[
@@ -1961,6 +2135,65 @@ const styles = StyleSheet.create({
     padding: 15,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "rgba(0,0,0,0.1)",
+  },
+  // ── Reply styles ──
+  replyPreviewContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderLeftWidth: 4,
+    marginHorizontal: 8,
+    marginBottom: 4,
+    borderRadius: 10,
+    gap: 10,
+  },
+  replyPreviewAuthor: {
+    fontSize: 13,
+    fontWeight: "700",
+    marginBottom: 3,
+  },
+  replyPreviewText: {
+    fontSize: 13,
+    opacity: 0.8,
+  },
+  replyCloseButton: {
+    padding: 4,
+  },
+  // Quoted box inside a message bubble
+  quotedBox: {
+    borderLeftWidth: 3,
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginBottom: 8,
+  },
+  quotedAuthor: {
+    fontSize: 12,
+    fontWeight: "700",
+    marginBottom: 2,
+  },
+  quotedText: {
+    fontSize: 13,
+    opacity: 0.85,
+  },
+  // Swipe-to-reply
+  swipeRow: {
+    position: "relative",
+  },
+  replyArrow: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
+    zIndex: -1,
+  },
+  replyArrowCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
   lightboxContainer: {
     flex: 1,
