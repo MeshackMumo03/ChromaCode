@@ -13,6 +13,7 @@ const MessageSchema = new mongoose.Schema({
   },
   text: {
     type: String,
+    maxlength: [10000, 'Message text cannot exceed 10000 characters'],
   },
   codeId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -43,7 +44,17 @@ const MessageSchema = new mongoose.Schema({
     ref: 'User',
   }],
   reactions: [{
-    emoji: String,
+    emoji: {
+      type: String,
+      maxlength: [16, 'Emoji reaction cannot exceed 16 characters'],
+      validate: {
+        validator: function(v) {
+          // Must not be an empty string or just whitespace
+          return v && v.trim().length > 0;
+        },
+        message: 'Emoji reaction cannot be empty',
+      },
+    },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User'

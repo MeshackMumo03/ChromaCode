@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getBaseUrl, getImageUrl } from '@/constants/api';
@@ -96,6 +96,7 @@ export default function CreateGroupScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <Stack.Screen options={{ title: 'New Group', headerShown: true, headerTintColor: colors.tint, headerStyle: { backgroundColor: colors.background }, headerTitleStyle: { color: colors.text } }} />
       <ThemedView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>

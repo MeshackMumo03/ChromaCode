@@ -34,6 +34,11 @@ yarn-error.*
 .env
 .env*.local
 backend/.env
+# Py-bot & session files
+Py-bot/
+*.session
+*.session-journal
+analytics_history.json
 
 # Firebase / Google Keys
 service-account-key.json

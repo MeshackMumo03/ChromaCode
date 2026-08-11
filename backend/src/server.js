@@ -15,6 +15,7 @@ const userRoutes = require('./routes/userRoutes');
 const conversationRoutes = require('./routes/conversationRoutes');
 const codeRoutes = require('./routes/codeRoutes');
 const historyRoutes = require('./routes/historyRoutes');
+const botRoutes = require('./bot/routes/botRoutes');
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, '..', 'uploads');
@@ -138,6 +139,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/conversations', protect, conversationRoutes);
 app.use('/api/codes', protect, codeRoutes);
 app.use('/api/history', protect, historyRoutes);
+app.use('/api/bot', botRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

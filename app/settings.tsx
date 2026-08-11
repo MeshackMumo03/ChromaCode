@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, ScrollView, TouchableOpacity, View, Switch, Alert, Platform, Modal, TextInput } from 'react-native';
-import { useRouter, Stack } from 'expo-router';
+import { useRouter, Stack, Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -27,6 +27,7 @@ export default function SettingsScreen() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isChanging, setIsChanging] = useState(false);
+  const [encryptionModalVisible, setEncryptionModalVisible] = useState(false);
 
   const handleClearCache = async () => {
     Alert.alert(
@@ -183,8 +184,11 @@ export default function SettingsScreen() {
           >
             <Ionicons name="chevron-forward" size={20} color={colors.icon} />
           </SettingRow>
-          <SettingRow icon="shield-checkmark-outline" label="Encryption Status">
-            <ThemedText style={{ color: '#34C759', fontSize: 14, fontWeight: 'bold' }}>Verified</ThemedText>
+          <SettingRow icon="shield-checkmark-outline" label="Encryption Status" onPress={() => setEncryptionModalVisible(true)}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <ThemedText style={{ color: '#34C759', fontSize: 13, fontWeight: '600' }}>TLS Encrypted</ThemedText>
+              <Ionicons name="information-circle-outline" size={16} color={colors.icon} />
+            </View>
           </SettingRow>
         </View>
 
@@ -204,7 +208,7 @@ export default function SettingsScreen() {
           <SettingRow icon="information-circle-outline" label="Version">
             <ThemedText style={{ color: colors.icon }}>1.0.0</ThemedText>
           </SettingRow>
-          <SettingRow icon="document-text-outline" label="Privacy Policy" onPress={() => {}}>
+          <SettingRow icon="document-text-outline" label="Privacy Policy" onPress={() => router.push('/privacy-policy' as Href)}>
             <Ionicons name="chevron-forward" size={20} color={colors.icon} />
           </SettingRow>
         </View>
@@ -216,6 +220,38 @@ export default function SettingsScreen() {
         <View style={{ height: 40 }} />
       </ScrollView>
 
+      {/* Encryption Info Modal */}
+      <Modal
+        visible={encryptionModalVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setEncryptionModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <ThemedView style={styles.modalContent}>
+            <Ionicons name="shield-checkmark" size={44} color="#34C759" style={{ marginBottom: 12 }} />
+            <ThemedText style={styles.modalTitle}>Encryption Details</ThemedText>
+            <ThemedText style={[styles.encryptionText, { color: colors.text }]}>
+              <ThemedText style={{ fontWeight: '700', color: '#34C759' }}>✓ TLS Transport Encryption{`\n`}</ThemedText>
+              All messages and media are encrypted in transit between your device and our servers using TLS (HTTPS/WSS). This protects your data from network eavesdroppers.
+            </ThemedText>
+            <ThemedText style={[styles.encryptionText, { color: colors.text, marginTop: 12 }]}>
+              <ThemedText style={{ fontWeight: '700', color: colors.icon }}>ℹ End-to-End Encryption{`\n`}</ThemedText>
+              ChromaCode currently uses server-side encryption. Messages are decryptable by our servers for delivery. Full end-to-end encryption (where only sender and recipient can read messages) is planned for a future update.
+            </ThemedText>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: '#34C759' }]}
+                onPress={() => setEncryptionModalVisible(false)}
+              >
+                <ThemedText style={{ color: '#fff', fontWeight: 'bold' }}>Got It</ThemedText>
+              </TouchableOpacity>
+            </View>
+          </ThemedView>
+        </View>
+      </Modal>
+
+      {/* Password Change Modal */}
       <Modal
         visible={passwordModalVisible}
         animationType="slide"
@@ -368,5 +404,11 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 12,
     alignItems: 'center',
-  }
+  },
+  encryptionText: {
+    fontSize: 14,
+    lineHeight: 22,
+    textAlign: 'center',
+    paddingHorizontal: 4,
+  },
 });

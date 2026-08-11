@@ -293,6 +293,11 @@ const MessageItem = memo(
                   onPress={() =>
                     onMediaPress(getImageUrl(item.mediaUrl), item.mediaType)
                   }
+                  onLongPress={() => {
+                    onLongPress(item);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  }}
+                  delayLongPress={350}
                   activeOpacity={0.9}
                 >
                   <ExpoImage
@@ -318,6 +323,11 @@ const MessageItem = memo(
                   onPress={() =>
                     onMediaPress(getImageUrl(item.mediaUrl), item.mediaType)
                   }
+                  onLongPress={() => {
+                    onLongPress(item);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  }}
+                  delayLongPress={350}
                   activeOpacity={0.9}
                 >
                   <ExpoImage
@@ -342,6 +352,14 @@ const MessageItem = memo(
                   </View>
                 </TouchableOpacity>
               ) : item.mediaType === "sticker" ? (
+                <TouchableOpacity
+                  onLongPress={() => {
+                    onLongPress(item);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  }}
+                  delayLongPress={350}
+                  activeOpacity={0.9}
+                >
                 <View style={styles.stickerContainer}>
                   <ExpoImage
                     source={{ uri: getImageUrl(item.mediaUrl) }}
@@ -361,6 +379,7 @@ const MessageItem = memo(
                     />
                   </View>
                 </View>
+                </TouchableOpacity>
               ) : item.mediaType === "document" ? (
                 <TouchableOpacity
                   style={styles.documentContainer}
@@ -370,6 +389,11 @@ const MessageItem = memo(
                       item.fileName || "document",
                     )
                   }
+                  onLongPress={() => {
+                    onLongPress(item);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  }}
+                  delayLongPress={350}
                 >
                   <Ionicons
                     name="document-text"
@@ -427,6 +451,11 @@ const MessageItem = memo(
                 <TouchableOpacity
                   style={styles.voiceContainer}
                   onPress={() => playSound(item.mediaUrl || "", item._id)}
+                  onLongPress={() => {
+                    onLongPress(item);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  }}
+                  delayLongPress={350}
                 >
                   {loadingSoundId === item._id ? (
                     <ActivityIndicator
@@ -580,6 +609,7 @@ export default function ChatScreen() {
     type: string;
   } | null>(null);
   const [isOnline, setIsOnline] = useState(false);
+  const [customEmojiInput, setCustomEmojiInput] = useState('');
 
   const updateCache = useCallback(
     async (msgs: Message[]) => {
@@ -1434,7 +1464,7 @@ export default function ChatScreen() {
               ]}
             >
               <View style={styles.reactionGrid}>
-                {["❤️", "👍", "😂", "😮", "😢", "🔥"].map((emoji) => (
+                {["❤️", "👍", "😂", "😮", "😢", "🔥", "👏", "🎉", "😍", "💯", "🤔", "😎"].map((emoji) => (
                   <TouchableOpacity
                     key={emoji}
                     onPress={() => addReaction(selectedMessage!._id, emoji)}
@@ -1443,6 +1473,29 @@ export default function ChatScreen() {
                     <ThemedText style={{ fontSize: 28 }}>{emoji}</ThemedText>
                   </TouchableOpacity>
                 ))}
+              </View>
+              {/* Custom emoji input from keyboard */}
+              <View style={[styles.customEmojiRow, { borderTopColor: colors.icon + '20' }]}>
+                <TextInput
+                  style={[styles.customEmojiInput, { color: colors.text, backgroundColor: colors.icon + '12', borderColor: colors.icon + '30' }]}
+                  placeholder="Type any emoji..."
+                  placeholderTextColor={colors.icon}
+                  value={customEmojiInput}
+                  onChangeText={setCustomEmojiInput}
+                  maxLength={8}
+                />
+                <TouchableOpacity
+                  style={[styles.customEmojiSend, { backgroundColor: customEmojiInput.trim() ? colors.tint : colors.icon + '30' }]}
+                  onPress={() => {
+                    if (customEmojiInput.trim() && selectedMessage) {
+                      addReaction(selectedMessage._id, customEmojiInput.trim());
+                      setCustomEmojiInput('');
+                    }
+                  }}
+                  disabled={!customEmojiInput.trim()}
+                >
+                  <ThemedText style={{ fontSize: 18 }}>➤</ThemedText>
+                </TouchableOpacity>
               </View>
               {selectedMessage?.sender._id === user?._id && (
                 <TouchableOpacity
@@ -1917,4 +1970,28 @@ const styles = StyleSheet.create({
   },
   closeBtn: { position: "absolute", top: 50, right: 20, zIndex: 10 },
   fullMedia: { width: "100%", height: "100%" },
+  customEmojiRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  customEmojiInput: {
+    flex: 1,
+    height: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    fontSize: 18,
+  },
+  customEmojiSend: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    justifyContent: "center",
+    alignItems: "center",
+  },
 });

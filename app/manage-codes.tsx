@@ -1,9 +1,10 @@
 import React from 'react';
-import { StyleSheet, FlatList, View, Button, Alert, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { StyleSheet, FlatList, View, Alert, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useCodes } from '@/hooks/useCodes';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Code } from '@/constants/codes';
@@ -68,10 +69,11 @@ export default function CodeManagementScreen() {
   }
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <Stack.Screen options={{ title: 'Manage Codes', headerShown: true, headerTintColor: colors.tint, headerStyle: { backgroundColor: colors.background }, headerTitleStyle: { color: colors.text } }} />
     <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ThemedText style={[styles.title, { color: colors.text }]}>Manage Codes</ThemedText>
-      <TouchableOpacity style={[styles.button, { backgroundColor: colors.icon, marginTop: 10 }]} onPress={() => router.push('/code-form')}>
-        <ThemedText style={{ color: colors.background, fontWeight: 'bold', textAlign: 'center' }}>Add New Code</ThemedText>
+      <TouchableOpacity style={[styles.button, { backgroundColor: colors.tint, marginTop: 10 }]} onPress={() => router.push('/code-form')}>
+        <ThemedText style={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}>+ Add New Code</ThemedText>
       </TouchableOpacity>
       {codes.length > 0 ? (
         <FlatList
@@ -84,6 +86,7 @@ export default function CodeManagementScreen() {
         <ThemedText style={[styles.emptyText, { color: colors.icon }]}>No codes found. Add a new one!</ThemedText>
       )}
     </ThemedView>
+    </SafeAreaView>
   );
 }
 

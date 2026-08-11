@@ -8,7 +8,7 @@ import { Code } from '@/constants/codes'; // Keep Code interface, remove CODES i
 import { ColorCodeButton } from '@/components/ColorCodeButton';
 import { useHistory } from '@/hooks/useHistory';
 import { useSettings } from '@/hooks/useSettings';
-import UserSelectionModal from '@/components/UserSelectionModal';
+import UserSelectionModal, { SelectionType } from '@/components/UserSelectionModal';
 import { useAuth } from '@/hooks/useAuth';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -104,7 +104,7 @@ export default function ChromaScreen() {
     setModalVisible(true);
   };
 
-  const handleUserSelect = async (recipientId: string) => {
+  const handleUserSelect = async (recipientId: string, type: SelectionType) => {
     if (!selectedCode || !token) {
       Alert.alert('Error', 'No code selected or not authenticated.');
       return;
@@ -113,28 +113,48 @@ export default function ChromaScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      const response = await fetch(`${BASE_URL}/conversations`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          recipientId,
-          text: `Sent you the code: ${selectedCode.name} - ${selectedCode.meaning}`,
-          codeId: selectedCode._id,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert('Success', `Code sent to user!`);
-        // We now need to pass the selectedCode._id and recipientId to addHistoryItem
-        addHistoryItem(selectedCode, data.conversation._id, recipientId); 
+      if (type === 'group') {
+        // Send code as a message to an existing group conversation
+        const response = await fetch(`${BASE_URL}/conversations/${recipientId}/messages`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            text: `Shared the code: ${selectedCode.name} — ${selectedCode.meaning}`,
+            codeId: selectedCode._id,
+          }),
+        });
+        if (response.ok) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          Alert.alert('Success', `Code sent to group!`);
+        } else {
+          const data = await response.json();
+          Alert.alert('Send Failed', data.message || 'Could not send code to group.');
+        }
       } else {
-        Alert.alert('Send Failed', data.message || 'Could not send code.');
+        // Send code to an individual user (creates/opens a conversation)
+        const response = await fetch(`${BASE_URL}/conversations`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            recipientId,
+            text: `Sent you the code: ${selectedCode.name} - ${selectedCode.meaning}`,
+            codeId: selectedCode._id,
+          }),
+        });
+        const data = await response.json();
+        if (response.ok) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          Alert.alert('Success', `Code sent!`);
+          addHistoryItem(selectedCode, data.conversation._id, recipientId);
+        } else {
+          Alert.alert('Send Failed', data.message || 'Could not send code.');
+        }
       }
     } catch (error) {
       console.error('Network error during sending code:', error);
