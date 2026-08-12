@@ -29,6 +29,7 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   return (
     <ToastContext.Provider value={{ showToast, hideToast }}>
       {children}
+      {/* InAppToast is self-contained and has NO context dependencies */}
       <InAppToast config={toastConfig} onHide={hideToast} />
     </ToastContext.Provider>
   );
@@ -36,8 +37,16 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
 export const useToast = () => {
   const context = useContext(ToastContext);
+
+  // Fail gracefully instead of throwing – a missing provider should not
+  // crash the entire app, especially during hot-reloads or edge renders.
   if (context === undefined) {
-    throw new Error('useToast must be used within a ToastProvider');
+    console.warn('[useToast] Called outside ToastProvider – toast will be a no-op.');
+    return {
+      showToast: (_message: string, _type?: ToastType, _subtitle?: string) => {},
+      hideToast: () => {},
+    };
   }
+
   return context;
 };

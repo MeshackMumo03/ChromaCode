@@ -1,8 +1,22 @@
+/**
+ * InAppToast – fully self-contained, zero context dependencies.
+ *
+ * IMPORTANT: This component is rendered by ToastProvider which sits ABOVE
+ * SettingsProvider and ThemeProvider in the tree.  It must NOT call any hook
+ * that relies on those contexts (useColorScheme, ThemedText, useSettings…).
+ * Use React Native's built-in useColorScheme and plain <Text> instead.
+ */
 import React, { useEffect, useRef } from 'react';
-import { View, Animated, Easing, StyleSheet, Platform, TouchableWithoutFeedback } from 'react-native';
+import {
+  View,
+  Text,
+  Animated,
+  Easing,
+  StyleSheet,
+  Platform,
+  useColorScheme as useRNColorScheme,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { ThemedText } from '@/components/themed-text';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export type ToastType = 'success' | 'error' | 'info';
 
@@ -14,7 +28,7 @@ export interface ToastConfig {
   accentColor?: string;
 }
 
-const TOAST_ICON: Record<ToastType, string> = {
+const TOAST_ICON: Record<ToastType, keyof typeof import('@expo/vector-icons').Ionicons.glyphMap> = {
   success: 'checkmark-circle',
   error: 'alert-circle',
   info: 'information-circle',
@@ -32,17 +46,19 @@ interface InAppToastProps {
 }
 
 export const InAppToast: React.FC<InAppToastProps> = ({ config, onHide }) => {
-  const isDark = useColorScheme() === 'dark';
+  // Use RN's built-in hook – no context required
+  const scheme = useRNColorScheme();
+  const isDark = scheme === 'dark';
+
   const translateY = useRef(new Animated.Value(-120)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (config.visible) {
-      // Reset to hidden position before animating in
+      // Reset position before animating in (handles rapid consecutive toasts)
       translateY.setValue(-120);
       opacity.setValue(0);
 
-      // Slide in
       Animated.parallel([
         Animated.spring(translateY, {
           toValue: 0,
@@ -57,7 +73,6 @@ export const InAppToast: React.FC<InAppToastProps> = ({ config, onHide }) => {
         }),
       ]).start();
 
-      // Auto-dismiss after 3.5 s
       const timer = setTimeout(() => {
         Animated.parallel([
           Animated.timing(translateY, {
@@ -85,49 +100,36 @@ export const InAppToast: React.FC<InAppToastProps> = ({ config, onHide }) => {
 
   const accentColor = config.accentColor || TOAST_BG[config.type];
   const cardBg = isDark ? '#1C1C28' : '#FFFFFF';
+  const titleColor = isDark ? '#FFFFFF' : '#111827';
+  const subtitleColor = isDark ? '#9CA3AF' : '#6B7280';
 
   return (
-    // Use a non-animated View for pointerEvents to avoid crashes on some RN versions
+    // A plain View carries pointerEvents safely across all RN versions
     <View style={styles.toastContainer} pointerEvents="none">
       <Animated.View
         style={[
           styles.toastAnimated,
-          {
-            transform: [{ translateY }],
-            opacity,
-          },
+          { transform: [{ translateY }], opacity },
         ]}
       >
-        <View
-          style={[
-            styles.toastCard,
-            {
-              backgroundColor: cardBg,
-              shadowColor: accentColor,
-            },
-          ]}
-        >
+        <View style={[styles.toastCard, { backgroundColor: cardBg, shadowColor: accentColor }]}>
           {/* Left accent bar */}
           <View style={[styles.toastAccent, { backgroundColor: accentColor }]} />
 
           {/* Icon */}
           <View style={[styles.toastIconWrap, { backgroundColor: accentColor + '22' }]}>
-            <Ionicons
-              name={TOAST_ICON[config.type] as any}
-              size={22}
-              color={accentColor}
-            />
+            <Ionicons name={TOAST_ICON[config.type]} size={22} color={accentColor} />
           </View>
 
           {/* Text */}
           <View style={styles.toastTextWrap}>
-            <ThemedText style={[styles.toastTitle, { color: isDark ? '#FFFFFF' : '#111827' }]}>
+            <Text style={[styles.toastTitle, { color: titleColor }]} numberOfLines={2}>
               {config.message}
-            </ThemedText>
+            </Text>
             {config.subtitle ? (
-              <ThemedText style={[styles.toastSubtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+              <Text style={[styles.toastSubtitle, { color: subtitleColor }]} numberOfLines={1}>
                 {config.subtitle}
-              </ThemedText>
+              </Text>
             ) : null}
           </View>
         </View>
@@ -135,7 +137,6 @@ export const InAppToast: React.FC<InAppToastProps> = ({ config, onHide }) => {
     </View>
   );
 };
-
 
 const styles = StyleSheet.create({
   toastContainer: {
