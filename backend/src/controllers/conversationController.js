@@ -143,12 +143,14 @@ const startConversation = asyncHandler(async (req, res) => {
     });
   });
 
-  // Send push notification to recipient
+  // Send push notification to recipient only if they are not currently online
+  const connectedUsers = req.app.get('connectedUsers') || new Map();
   sendPushNotification(
     recipientId,
     `New message from ${req.user.username}`,
     mediaType && mediaType !== 'none' ? `Sent an ${mediaType}` : text,
-    { conversationId: conversation._id }
+    { conversationId: conversation._id },
+    connectedUsers
   );
 
   // Propagate custom code to recipient (not needed for presets — they're universal)
@@ -368,7 +370,8 @@ const sendMessage = asyncHandler(async (req, res) => {
     });
   });
 
-  // Send push notification to other participants
+  // Send push notification to other participants (only those NOT currently online)
+  const connectedUsers = req.app.get('connectedUsers') || new Map();
   const recipients = conversation.participants.filter(p => p.toString() !== senderId.toString());
   
   recipients.forEach(recipientId => {
@@ -380,7 +383,8 @@ const sendMessage = asyncHandler(async (req, res) => {
       recipientId,
       conversation.isGroup ? `${conversation.name}: ${req.user.username}` : `New message from ${req.user.username}`,
       notificationText,
-      { conversationId: conversation._id }
+      { conversationId: conversation._id },
+      connectedUsers
     );
 
     // Propagate custom code to all recipients

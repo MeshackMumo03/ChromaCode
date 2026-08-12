@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Animated, Easing, StyleSheet, Platform } from 'react-native';
+import { View, Animated, Easing, StyleSheet, Platform, TouchableWithoutFeedback } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/themed-text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -38,6 +38,10 @@ export const InAppToast: React.FC<InAppToastProps> = ({ config, onHide }) => {
 
   useEffect(() => {
     if (config.visible) {
+      // Reset to hidden position before animating in
+      translateY.setValue(-120);
+      opacity.setValue(0);
+
       // Slide in
       Animated.parallel([
         Animated.spring(translateY, {
@@ -67,7 +71,7 @@ export const InAppToast: React.FC<InAppToastProps> = ({ config, onHide }) => {
             duration: 300,
             useNativeDriver: true,
           }),
-        ]).start(onHide);
+        ]).start(() => onHide());
       }, 3500);
 
       return () => clearTimeout(timer);
@@ -83,52 +87,55 @@ export const InAppToast: React.FC<InAppToastProps> = ({ config, onHide }) => {
   const cardBg = isDark ? '#1C1C28' : '#FFFFFF';
 
   return (
-    <Animated.View
-      style={[
-        styles.toastContainer,
-        {
-          transform: [{ translateY }],
-          opacity,
-        },
-      ]}
-      pointerEvents="none"
-    >
-      <View
+    // Use a non-animated View for pointerEvents to avoid crashes on some RN versions
+    <View style={styles.toastContainer} pointerEvents="none">
+      <Animated.View
         style={[
-          styles.toastCard,
+          styles.toastAnimated,
           {
-            backgroundColor: cardBg,
-            shadowColor: accentColor,
+            transform: [{ translateY }],
+            opacity,
           },
         ]}
       >
-        {/* Left accent bar */}
-        <View style={[styles.toastAccent, { backgroundColor: accentColor }]} />
+        <View
+          style={[
+            styles.toastCard,
+            {
+              backgroundColor: cardBg,
+              shadowColor: accentColor,
+            },
+          ]}
+        >
+          {/* Left accent bar */}
+          <View style={[styles.toastAccent, { backgroundColor: accentColor }]} />
 
-        {/* Icon */}
-        <View style={[styles.toastIconWrap, { backgroundColor: accentColor + '22' }]}>
-          <Ionicons
-            name={TOAST_ICON[config.type] as any}
-            size={22}
-            color={accentColor}
-          />
-        </View>
+          {/* Icon */}
+          <View style={[styles.toastIconWrap, { backgroundColor: accentColor + '22' }]}>
+            <Ionicons
+              name={TOAST_ICON[config.type] as any}
+              size={22}
+              color={accentColor}
+            />
+          </View>
 
-        {/* Text */}
-        <View style={styles.toastTextWrap}>
-          <ThemedText style={[styles.toastTitle, { color: isDark ? '#FFFFFF' : '#111827' }]}>
-            {config.message}
-          </ThemedText>
-          {config.subtitle ? (
-            <ThemedText style={[styles.toastSubtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-              {config.subtitle}
+          {/* Text */}
+          <View style={styles.toastTextWrap}>
+            <ThemedText style={[styles.toastTitle, { color: isDark ? '#FFFFFF' : '#111827' }]}>
+              {config.message}
             </ThemedText>
-          ) : null}
+            {config.subtitle ? (
+              <ThemedText style={[styles.toastSubtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                {config.subtitle}
+              </ThemedText>
+            ) : null}
+          </View>
         </View>
-      </View>
-    </Animated.View>
+      </Animated.View>
+    </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   toastContainer: {
@@ -137,6 +144,9 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     zIndex: 9999,
+  },
+  toastAnimated: {
+    width: '100%',
   },
   toastCard: {
     flexDirection: 'row',
