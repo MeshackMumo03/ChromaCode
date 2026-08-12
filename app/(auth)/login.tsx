@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, TextInput, Alert, Image, ScrollView, View, TouchableOpacity, Text } from 'react-native';
+import { StyleSheet, TextInput, Image, ScrollView, View, TouchableOpacity, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StyledButton } from '@/components/StyledButton';
 import { ThemedView } from '@/components/themed-view';
@@ -9,6 +9,7 @@ import { useRouter, Href } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
+import { useToast } from '@/hooks/useToast';
 import Constants from 'expo-constants';
 
 // Only import GoogleSignin if not in Expo Go to avoid crashes
@@ -33,6 +34,7 @@ export default function LoginScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isExpoGo = Constants.appOwnership === 'expo';
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (GoogleSignin) {
@@ -58,20 +60,20 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields.');
+      showToast('Please fill in all fields.', 'error');
       return;
     }
 
     const success = await login(email, password);
     if (!success) {
       // Error handling is mostly managed in AuthProvider (redirect to verify etc)
-      Alert.alert('Login Failed', 'Invalid credentials or network error.');
+      showToast('Invalid credentials or network error.', 'error', 'Login Failed');
     }
   };
 
   const handleGoogleSignIn = async () => {
     if (isExpoGo) {
-      Alert.alert('Not Supported', 'Google Sign-In is not supported in Expo Go. Please use a development build.');
+      showToast('Google Sign-In is not supported in Expo Go. Please use a development build.', 'error', 'Not Supported');
       return;
     }
 
@@ -104,9 +106,9 @@ export default function LoginScreen() {
       });
 
       if (success) {
-        Alert.alert('Success', 'Logged in with Google!');
+        showToast('Logged in with Google!', 'success');
       } else {
-        Alert.alert('Error', 'Failed to authenticate with Google');
+        showToast('Failed to authenticate with Google', 'error');
       }
     } catch (error: any) {
       if (statusCodes && error.code === statusCodes.SIGN_IN_CANCELLED) {
@@ -115,7 +117,7 @@ export default function LoginScreen() {
         // operation in progress
       } else {
         console.error('Google Sign-In Error:', error);
-        Alert.alert('Error', 'Google Sign-In failed');
+        showToast('Google Sign-In failed', 'error');
       }
     }
   };

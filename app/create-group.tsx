@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, TextInput, FlatList, TouchableOpacity, View, Image, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, TextInput, FlatList, TouchableOpacity, View, Image, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
@@ -10,6 +10,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getBaseUrl, getImageUrl } from '@/constants/api';
 import { StyledButton } from '@/components/StyledButton';
 import { Ionicons } from '@expo/vector-icons';
+import { useToast } from '@/hooks/useToast';
 
 const BASE_URL = getBaseUrl();
 
@@ -29,6 +30,7 @@ export default function CreateGroupScreen() {
   const [creating, setCreating] = useState(false);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { showToast } = useToast();
 
   useEffect(() => {
     fetchFriends();
@@ -59,11 +61,11 @@ export default function CreateGroupScreen() {
 
   const handleCreateGroup = async () => {
     if (!groupName.trim()) {
-      Alert.alert('Required', 'Please enter a group name');
+      showToast('Please enter a group name', 'error', 'Required');
       return;
     }
     if (selectedFriends.length === 0) {
-      Alert.alert('Required', 'Please select at least one friend');
+      showToast('Please select at least one friend', 'error', 'Required');
       return;
     }
 
@@ -85,10 +87,10 @@ export default function CreateGroupScreen() {
       if (response.ok) {
         router.replace(`/chat/${data._id}`);
       } else {
-        Alert.alert('Error', data.message || 'Failed to create group');
+        showToast(data.message || 'Failed to create group', 'error');
       }
     } catch (error) {
-      Alert.alert('Error', 'Network error while creating group');
+      showToast('Network error while creating group', 'error');
     } finally {
       setCreating(false);
     }

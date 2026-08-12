@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, TextInput, Alert } from 'react-native';
+import { StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
@@ -8,6 +8,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { StyledButton } from '@/components/StyledButton';
+import { useToast } from '@/hooks/useToast';
 
 export default function ResetPasswordScreen() {
   const { email } = useLocalSearchParams<{ email: string }>();
@@ -18,34 +19,35 @@ export default function ResetPasswordScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
+  const { showToast } = useToast();
 
   const handleReset = async () => {
     if (code.length !== 6) {
-      Alert.alert('Error', 'Please enter the 6-digit code');
+      showToast('Please enter the 6-digit code', 'error');
       return;
     }
     if (newPassword.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
+      showToast('Password must be at least 6 characters long', 'error');
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      showToast('Passwords do not match', 'error');
       return;
     }
 
     const success = await resetPassword(email, code, newPassword);
     if (success) {
-      Alert.alert('Success', 'Your password has been reset!');
+      showToast('Your password has been reset!', 'success');
       // router.replace to (tabs) is handled inside useAuth's resetPassword
     } else {
-      Alert.alert('Reset Failed', 'Invalid or expired code. Please try again.');
+      showToast('Invalid or expired code. Please try again.', 'error', 'Reset Failed');
     }
   };
 
   const handleResend = async () => {
     const success = await forgotPassword(email);
     if (success) {
-      Alert.alert('Code Sent', 'A new reset code has been sent to your email.');
+      showToast('A new reset code has been sent to your email.', 'info', 'Code Sent');
     }
   };
 

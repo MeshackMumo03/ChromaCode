@@ -6,9 +6,9 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAuth } from "@/hooks/useAuth";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useToast } from "@/hooks/useToast";
 import React, { useEffect, useState } from "react";
 import {
-  Alert,
   Image,
   ScrollView,
   StyleSheet,
@@ -43,6 +43,7 @@ export default function RegisterScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
   const isExpoGo = Constants.appOwnership === 'expo';
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (GoogleSignin) {
@@ -64,16 +65,16 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     if (!username || !email || !password) {
-      Alert.alert("Error", "Please fill in all fields.");
+      showToast("Please fill in all fields.", "error");
       return;
     }
 
     const result: any = await register(username, email, password);
     if (result.success) {
       if (result.needsVerification) {
-        Alert.alert(
-          "Success",
+        showToast(
           "Verification code sent! Please check your email.",
+          "success"
         );
         router.push({
           pathname: "/verify-email",
@@ -83,16 +84,17 @@ export default function RegisterScreen() {
         router.replace("/(tabs)");
       }
     } else {
-      Alert.alert(
-        "Registration Failed",
+      showToast(
         "User already exists or network error.",
+        "error",
+        "Registration Failed"
       );
     }
   };
 
   const handleGoogleSignIn = async () => {
     if (isExpoGo) {
-      Alert.alert('Not Supported', 'Google Sign-In is not supported in Expo Go. Please use a development build.');
+      showToast('Google Sign-In is not supported in Expo Go. Please use a development build.', 'error', 'Not Supported');
       return;
     }
 
@@ -123,9 +125,9 @@ export default function RegisterScreen() {
       });
 
       if (success) {
-        Alert.alert("Success", "Logged in with Google!");
+        showToast("Logged in with Google!", "success");
       } else {
-        Alert.alert("Error", "Failed to authenticate with Google");
+        showToast("Failed to authenticate with Google", "error");
       }
     } catch (error: any) {
       if (statusCodes && error.code === statusCodes.SIGN_IN_CANCELLED) {
@@ -134,7 +136,7 @@ export default function RegisterScreen() {
         // operation in progress
       } else {
         console.error("Google Sign-In Error:", error);
-        Alert.alert("Error", "Google Sign-In failed");
+        showToast("Google Sign-In failed", "error");
       }
     }
   };

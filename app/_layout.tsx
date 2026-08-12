@@ -16,6 +16,7 @@ import { CodesProvider } from '@/hooks/useCodes';
 import { useNotifications } from '@/hooks/useNotifications';
 import { SocketProvider } from '@/hooks/useSocket';
 import { ConversationsProvider } from '@/hooks/useConversations';
+import { ToastProvider } from '@/hooks/useToast';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const unstable_settings = {
@@ -86,14 +87,16 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <HistoryProvider>
-        <SettingsProvider>
-          <CodesProvider>
-            <RootLayoutNav />
-          </CodesProvider>
-        </SettingsProvider>
-      </HistoryProvider>
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <HistoryProvider>
+          <SettingsProvider>
+            <CodesProvider>
+              <RootLayoutNav />
+            </CodesProvider>
+          </SettingsProvider>
+        </HistoryProvider>
+      </AuthProvider>
+    </ToastProvider>
   );
 }

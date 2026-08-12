@@ -11,6 +11,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSettings, ThemePreference } from '@/hooks/useSettings';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/useToast';
 import { getBaseUrl } from '@/constants/api';
 import { StyledButton } from '@/components/StyledButton';
 
@@ -22,6 +23,7 @@ export default function SettingsScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const { themePreference, setThemePreference, notificationsEnabled, setNotificationsEnabled } = useSettings();
   const { user, token, logout } = useAuth();
+  const { showToast } = useToast();
   
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [newPassword, setNewPassword] = useState('');
@@ -45,9 +47,9 @@ export default function SettingsScreen() {
               const keysToKeep = ['userToken'];
               const keysToRemove = keys.filter(key => !keysToKeep.includes(key));
               await AsyncStorage.multiRemove(keysToRemove);
-              Alert.alert('Success', 'Cache cleared successfully.');
+              showToast('Cache cleared successfully.', 'success');
             } catch (e) {
-              Alert.alert('Error', 'Failed to clear cache.');
+              showToast('Failed to clear cache.', 'error');
             }
           }
         }
@@ -57,17 +59,17 @@ export default function SettingsScreen() {
 
   const handleChangePassword = async () => {
     if (!newPassword || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields.');
+      showToast('Please fill in all fields.', 'error');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match.');
+      showToast('Passwords do not match.', 'error');
       return;
     }
 
     if (newPassword.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters.');
+      showToast('Password must be at least 6 characters.', 'error');
       return;
     }
 
@@ -83,16 +85,16 @@ export default function SettingsScreen() {
       });
 
       if (response.ok) {
-        Alert.alert('Success', 'Password updated successfully.');
+        showToast('Password updated successfully.', 'success');
         setPasswordModalVisible(false);
         setNewPassword('');
         setConfirmPassword('');
       } else {
         const data = await response.json();
-        Alert.alert('Error', data.message || 'Failed to update password.');
+        showToast(data.message || 'Failed to update password.', 'error');
       }
     } catch (error) {
-      Alert.alert('Error', 'Network error. Please try again.');
+      showToast('Network error. Please try again.', 'error');
     } finally {
       setIsChanging(false);
     }

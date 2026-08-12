@@ -11,6 +11,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/hooks/useAuth';
 import { getBaseUrl, getImageUrl } from '@/constants/api';
 import { Image as ExpoImage } from 'expo-image';
+import { useToast } from '@/hooks/useToast';
 
 const BASE_URL = getBaseUrl();
 
@@ -23,6 +24,7 @@ export default function BlockedUsersScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const navigation = useNavigation();
+  const { showToast } = useToast();
 
   const fetchData = useCallback(async () => {
     if (!token) return;
@@ -101,11 +103,11 @@ export default function BlockedUsersScreen() {
               });
 
               if (response.ok) {
-                Alert.alert('Success', `${username} has been blocked.`);
+                showToast(`${username} has been blocked.`, 'success');
                 fetchData();
               } else {
                 const data = await response.json();
-                Alert.alert('Error', data.message || 'Failed to block user');
+                showToast(data.message || 'Failed to block user', 'error');
               }
             } catch (error) {
               console.error('Error blocking user:', error);
@@ -128,7 +130,7 @@ export default function BlockedUsersScreen() {
       });
 
       if (response.ok) {
-        Alert.alert('Success', `${username} unblocked.`);
+        showToast(`${username} unblocked.`, 'success');
         fetchData();
       }
     } catch (error) {

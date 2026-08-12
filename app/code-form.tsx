@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, TextInput, Alert, View, TouchableOpacity, Modal, ScrollView, FlatList } from 'react-native';
+import { StyleSheet, TextInput, View, TouchableOpacity, Modal, ScrollView, FlatList } from 'react-native';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useCodes } from '@/hooks/useCodes';
@@ -9,6 +9,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { StyledButton } from '@/components/StyledButton';
 import { useSettings } from '@/hooks/useSettings';
 import { Ionicons } from '@expo/vector-icons';
+import { useToast } from '@/hooks/useToast';
 
 // Curated color palette — 30 colors across warm, cool, neutral and vibrant hues
 const COLOR_PALETTE = [
@@ -45,6 +46,7 @@ export default function CodeFormScreen() {
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (isEditing && codes.length > 0) {
@@ -83,11 +85,11 @@ export default function CodeFormScreen() {
 
   const handleSubmit = async () => {
     if (!name || !color || !meaning) {
-      Alert.alert('Error', 'Please fill in all fields.');
+      showToast('Please fill in all fields.', 'error');
       return;
     }
     if (!isValidHex(color)) {
-      Alert.alert('Error', 'Please select or enter a valid hex color (e.g., #FF3B30).');
+      showToast('Please select or enter a valid hex color (e.g., #FF3B30).', 'error');
       return;
     }
 
@@ -102,10 +104,10 @@ export default function CodeFormScreen() {
     }
 
     if (success) {
-      Alert.alert('Success', `Code ${isEditing ? 'updated' : 'created'} successfully.`);
+      showToast(`Code ${isEditing ? 'updated' : 'created'} successfully.`, 'success');
       router.back();
     } else {
-      Alert.alert('Error', error || `Failed to ${isEditing ? 'update' : 'create'} code.`);
+      showToast(error || `Failed to ${isEditing ? 'update' : 'create'} code.`, 'error');
     }
   };
 

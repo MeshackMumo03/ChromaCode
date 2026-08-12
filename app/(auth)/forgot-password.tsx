@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, TextInput, Alert } from 'react-native';
+import { StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
@@ -8,6 +8,7 @@ import { useRouter, Href } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { StyledButton } from '@/components/StyledButton';
+import { useToast } from '@/hooks/useToast';
 
 export default function ForgotPasswordScreen() {
   const { forgotPassword, isLoading } = useAuth();
@@ -15,22 +16,24 @@ export default function ForgotPasswordScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
+  const { showToast } = useToast();
 
   const handleSendCode = async () => {
     if (!email) {
-      Alert.alert('Error', 'Please enter your email address');
+      showToast('Please enter your email address', 'error');
       return;
     }
 
     const success = await forgotPassword(email);
     if (success) {
-      Alert.alert(
-        'Check Your Email',
-        'If an account exists for that email, a password reset code has been sent to it.'
+      showToast(
+        'If an account exists for that email, a password reset code has been sent to it.',
+        'success',
+        'Check Your Email'
       );
       router.push({ pathname: '/reset-password' as any, params: { email } });
     } else {
-      Alert.alert('Error', 'Something went wrong. Please check your connection and try again.');
+      showToast('Something went wrong. Please check your connection and try again.', 'error');
     }
   };
 

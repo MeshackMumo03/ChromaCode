@@ -4,7 +4,6 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Alert,
   View,
   TextInput,
   ActivityIndicator,
@@ -20,6 +19,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
+import { useToast } from '@/hooks/useToast';
 
 const BASE_URL = getBaseUrl();
 
@@ -91,6 +91,7 @@ export default function UserSelectionModal({
   const { token } = useAuth();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { showToast } = useToast();
 
   const [friends, setFriends] = useState<Friend[]>([]);
   const [groups, setGroups] = useState<GroupConversation[]>([]);
@@ -120,7 +121,7 @@ export default function UserSelectionModal({
         setGroups(groupConvs);
       }
     } catch (error) {
-      Alert.alert('Error', 'Network error while fetching recipients.');
+      showToast('Network error while fetching recipients.', 'error');
     } finally {
       setLoading(false);
     }

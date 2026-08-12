@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, TextInput, Alert, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
@@ -8,6 +8,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { StyledButton } from '@/components/StyledButton';
+import { useToast } from '@/hooks/useToast';
 
 export default function VerifyEmailScreen() {
   const { email } = useLocalSearchParams<{ email: string }>();
@@ -16,19 +17,20 @@ export default function VerifyEmailScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
+  const { showToast } = useToast();
 
   const handleVerify = async () => {
     if (code.length !== 6) {
-      Alert.alert('Error', 'Please enter the 6-digit code');
+      showToast('Please enter the 6-digit code', 'error');
       return;
     }
 
     const success = await verifyEmail(email, code);
     if (success) {
-      Alert.alert('Success', 'Email verified successfully!');
+      showToast('Email verified successfully!', 'success');
       // router.replace handles transition in useAuth
     } else {
-      Alert.alert('Verification Failed', 'Invalid or expired code');
+      showToast('Invalid or expired code', 'error', 'Verification Failed');
     }
   };
 

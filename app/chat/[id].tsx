@@ -7,6 +7,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAuth } from "@/hooks/useAuth";
 import { useConversations } from "@/hooks/useConversations";
 import { useSocket } from "@/hooks/useSocket";
+import { useToast } from "@/hooks/useToast";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Audio } from "expo-av";
@@ -756,6 +757,7 @@ export default function ChatScreen() {
   const flatListRef = useRef<FlatList>(null);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
+  const { showToast } = useToast();
 
   const StatusIcon = useCallback(
     ({ status, isMyMessage }: { status?: string; isMyMessage: boolean }) => {
@@ -1107,13 +1109,13 @@ export default function ChatScreen() {
           const errorJson = JSON.parse(responseText);
           errorMsg = errorJson.message || errorMsg;
         } catch (e) {}
-        Alert.alert("Upload failed", errorMsg);
+        showToast(errorMsg, "error", "Upload failed");
         return null;
       }
       return JSON.parse(responseText);
     } catch (error: any) {
       console.error("Upload error:", error);
-      Alert.alert("Upload error", error.message || "Could not upload file");
+      showToast(error.message || "Could not upload file", "error", "Upload error");
       return null;
     } finally {
       setUploading(false);
@@ -1214,9 +1216,10 @@ export default function ChatScreen() {
     try {
       const { status } = await Audio.requestPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert(
-          "Permission Denied",
+        showToast(
           "Mic permission is required to record audio.",
+          "error",
+          "Permission Denied"
         );
         return;
       }
@@ -1283,7 +1286,7 @@ export default function ChatScreen() {
     } catch (error) {
       console.error("Error playing sound:", error);
       setLoadingSoundId(null);
-      Alert.alert("Error", "Could not play audio");
+      showToast("Could not play audio", "error");
     }
   };
 
@@ -1294,13 +1297,13 @@ export default function ChatScreen() {
       const supported = await Linking.canOpenURL(urlWithToken);
       if (supported) await Linking.openURL(urlWithToken);
       else
-        Alert.alert(
-          "Error",
+        showToast(
           "Don't know how to open this URL: " + urlWithToken,
+          "error"
         );
     } catch (error) {
       console.error("Error opening document:", error);
-      Alert.alert("Error", "Could not open document");
+      showToast("Could not open document", "error");
     }
   };
 
@@ -1350,7 +1353,7 @@ export default function ChatScreen() {
         setMessages((prev) => prev.map((m) => (m._id === tempId ? data : m)));
       } else {
         setMessages((prev) => prev.filter((m) => m._id !== tempId));
-        Alert.alert("Error", "Failed to send message");
+        showToast("Failed to send message", "error");
       }
     } catch (error) {
       console.error("Network error during sending message:", error);

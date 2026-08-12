@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, TextInput, Alert, ScrollView, View, ImageBackground } from 'react-native';
+import { StyleSheet, TextInput, ScrollView, View, ImageBackground } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '@/components/themed-view';
@@ -10,9 +10,10 @@ import { StyledButton } from '@/components/StyledButton'; // Import StyledButton
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getBaseUrl, getImageUrl } from '@/constants/api'; // Import getBaseUrl and getImageUrl
+import { useToast } from '@/hooks/useToast';
 
 import * as ImagePicker from 'expo-image-picker';
-import { RefreshControl, Pressable, TouchableOpacity } from 'react-native';
+import { Alert, RefreshControl, Pressable, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 const BASE_URL = getBaseUrl(); // Backend API URL
@@ -28,6 +29,7 @@ export default function ProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { showToast } = useToast();
 
   useEffect(() => {
     navigation.setOptions({
@@ -68,7 +70,7 @@ export default function ProfileScreen() {
 
   const handleUpdateProfile = async (imageUri?: string) => {
     if (!token) {
-      Alert.alert('Error', 'Not authenticated.');
+      showToast('Not authenticated.', 'error');
       return;
     }
 
@@ -89,14 +91,14 @@ export default function ProfileScreen() {
       const data = await response.json();
 
       if (response.ok) {
-        if (!imageUri) Alert.alert('Success', 'Profile updated successfully.');
+        if (!imageUri) showToast('Profile updated successfully.', 'success');
         updateUser(data.user);
       } else {
-        Alert.alert('Update Failed', data.message || 'Could not update profile.');
+        showToast(data.message || 'Could not update profile.', 'error', 'Update Failed');
       }
     } catch (error) {
       console.error('Network error during profile update:', error);
-      Alert.alert('Error', 'Network error during profile update.');
+      showToast('Network error during profile update.', 'error');
     }
   };
 
@@ -123,11 +125,11 @@ export default function ProfileScreen() {
         handleUpdateProfile(data.imageUrl);
       } else {
         console.error('Backend upload error:', data);
-        Alert.alert('Upload Failed', data.message || 'Could not upload image.');
+        showToast(data.message || 'Could not upload image.', 'error', 'Upload Failed');
       }
     } catch (error) {
       console.error('Backend upload error:', error);
-      Alert.alert('Upload Failed', 'Could not upload image to server.');
+      showToast('Could not upload image to server.', 'error', 'Upload Failed');
     } finally {
       setRefreshing(false);
     }
@@ -136,7 +138,7 @@ export default function ProfileScreen() {
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'We need camera roll permissions to change your avatar.');
+      showToast('We need camera roll permissions to change your avatar.', 'error', 'Permission Denied');
       return;
     }
 
@@ -165,7 +167,7 @@ export default function ProfileScreen() {
 
       if (response.ok) {
         setFriendRequests(prev => prev.filter(req => req._id !== requestId));
-        if (action === 'accept') Alert.alert('Accepted', 'Friend request accepted!');
+        if (action === 'accept') showToast('Friend request accepted!', 'success', 'Accepted');
       }
     } catch (error) {
       console.error(`Error during friend request ${action}:`, error);
@@ -180,7 +182,7 @@ export default function ProfileScreen() {
 
   const handleDeleteAccount = async () => {
     if (!token) {
-      Alert.alert('Error', 'Not authenticated.');
+      showToast('Not authenticated.', 'error');
       return;
     }
 
@@ -204,15 +206,15 @@ export default function ProfileScreen() {
               });
 
               if (response.ok) {
-                Alert.alert('Success', 'Account deleted successfully.');
+                showToast('Account deleted successfully.', 'success');
                 logout();
               } else {
                 const data = await response.json();
-                Alert.alert('Deletion Failed', data.message || 'Could not delete account.');
+                showToast(data.message || 'Could not delete account.', 'error', 'Deletion Failed');
               }
             } catch (error) {
               console.error('Network error during account deletion:', error);
-              Alert.alert('Error', 'Network error during account deletion.');
+              showToast('Network error during account deletion.', 'error');
             }
           },
           style: 'destructive',

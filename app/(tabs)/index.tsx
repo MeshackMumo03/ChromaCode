@@ -4,7 +4,6 @@ import {
   View,
   TextInput,
   FlatList,
-  Alert,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
@@ -21,6 +20,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getBaseUrl, getImageUrl } from '@/constants/api';
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
+import { useToast } from '@/hooks/useToast';
 
 const BASE_URL = getBaseUrl();
 
@@ -242,6 +242,7 @@ export default function HomeScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const headerAnim = useRef(new Animated.Value(0)).current;
+  const { showToast } = useToast();
 
   // Animate header in on mount
   useEffect(() => {
@@ -273,10 +274,10 @@ export default function HomeScreen() {
           if (response.ok) {
             setSearchResults(Array.isArray(data) ? data : []);
           } else {
-            Alert.alert('Search Error', data.message || 'Failed to search.');
+            showToast(data.message || 'Failed to search.', 'error', 'Search Error');
           }
         } catch {
-          Alert.alert('Error', 'Network error during search.');
+          showToast('Network error during search.', 'error');
         } finally {
           setIsSearching(false);
         }
@@ -297,12 +298,12 @@ export default function HomeScreen() {
       });
       const data = await response.json();
       if (response.ok) {
-        Alert.alert('✅ Request Sent', `Friend request sent to ${friendUsername}!`);
+        showToast(`Friend request sent to ${friendUsername}!`, 'success', '✅ Request Sent');
       } else {
-        Alert.alert('Error', data.message || 'Failed to send request.');
+        showToast(data.message || 'Failed to send request.', 'error');
       }
     } catch {
-      Alert.alert('Error', 'Network error while sending friend request.');
+      showToast('Network error while sending friend request.', 'error');
     }
   };
 
@@ -322,10 +323,10 @@ export default function HomeScreen() {
       if ((response.ok || response.status === 200) && data.conversation?._id) {
         router.push(`/chat/${data.conversation._id}` as any);
       } else {
-        Alert.alert('Error', data.message || `Failed to start chat with ${friendUsername}.`);
+        showToast(data.message || `Failed to start chat with ${friendUsername}.`, 'error');
       }
     } catch {
-      Alert.alert('Error', 'Network error while starting chat.');
+      showToast('Network error while starting chat.', 'error');
     }
   };
 
@@ -340,10 +341,10 @@ export default function HomeScreen() {
       if (response.ok) {
         setFriends(Array.isArray(data) ? data : []);
       } else {
-        Alert.alert('Error', data.message || 'Failed to fetch friends.');
+        showToast(data.message || 'Failed to fetch friends.', 'error');
       }
     } catch {
-      Alert.alert('Error', 'Network error while fetching friends.');
+      showToast('Network error while fetching friends.', 'error');
     } finally {
       setIsFetchingFriends(false);
     }

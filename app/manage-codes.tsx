@@ -8,12 +8,14 @@ import { useRouter, Stack } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Code } from '@/constants/codes';
+import { useToast } from '@/hooks/useToast';
 
 export default function CodeManagementScreen() {
   const { codes, isLoading, error, deleteCode } = useCodes();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { showToast } = useToast();
 
   const handleDelete = (id: string) => {
     Alert.alert(
@@ -29,9 +31,9 @@ export default function CodeManagementScreen() {
           onPress: async () => {
             const success = await deleteCode(id);
             if (success) {
-              Alert.alert('Success', 'Code deleted successfully.');
+              showToast('Code deleted successfully.', 'success');
             } else {
-              Alert.alert('Error', error || 'Failed to delete code.');
+              showToast(error || 'Failed to delete code.', 'error');
             }
           },
           style: 'destructive',

@@ -12,6 +12,7 @@ import { StyledButton } from '@/components/StyledButton';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Image as ExpoImage } from 'expo-image';
+import { useToast } from '@/hooks/useToast';
 
 const BASE_URL = getBaseUrl();
 
@@ -28,6 +29,7 @@ export default function GroupSettingsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { showToast } = useToast();
 
   useEffect(() => {
     navigation.setOptions({
@@ -79,13 +81,13 @@ export default function GroupSettingsScreen() {
       
       const data = await response.json();
       if (response.ok) {
-        if (!newImage) Alert.alert('Success', 'Group updated successfully');
+        if (!newImage) showToast('Group updated successfully', 'success');
         setConversation(data);
       } else {
-        Alert.alert('Error', data.message || 'Failed to update group');
+        showToast(data.message || 'Failed to update group', 'error');
       }
     } catch (error) {
-      Alert.alert('Error', 'Network error');
+      showToast('Network error', 'error');
     } finally {
       setSaving(false);
     }
@@ -114,11 +116,11 @@ export default function GroupSettingsScreen() {
         handleUpdateGroup(data.imageUrl);
       } else {
         console.error('Backend upload error:', data);
-        Alert.alert('Upload Failed', data.message || 'Could not upload image.');
+        showToast(data.message || 'Could not upload image.', 'error', 'Upload Failed');
       }
     } catch (error) {
       console.error('Backend upload error:', error);
-      Alert.alert('Upload Failed', 'Could not upload image to server.');
+      showToast('Could not upload image to server.', 'error', 'Upload Failed');
     } finally {
       setSaving(false);
     }
@@ -129,7 +131,7 @@ export default function GroupSettingsScreen() {
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'We need camera roll permissions to change the group image.');
+      showToast('We need camera roll permissions to change the group image.', 'error', 'Permission Denied');
       return;
     }
 
@@ -164,10 +166,10 @@ export default function GroupSettingsScreen() {
                 router.replace('/conversations');
               } else {
                 const data = await response.json();
-                Alert.alert('Error', data.message || 'Could not leave group');
+                showToast(data.message || 'Could not leave group', 'error');
               }
             } catch (error) {
-              Alert.alert('Error', 'Failed to leave group');
+              showToast('Failed to leave group', 'error');
             }
           }
         }
@@ -194,10 +196,10 @@ export default function GroupSettingsScreen() {
                 router.replace('/conversations');
               } else {
                 const data = await response.json();
-                Alert.alert('Error', data.message || 'Could not delete group');
+                showToast(data.message || 'Could not delete group', 'error');
               }
             } catch (error) {
-              Alert.alert('Error', 'Failed to delete group');
+              showToast('Failed to delete group', 'error');
             }
           }
         }
