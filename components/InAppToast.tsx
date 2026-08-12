@@ -28,7 +28,7 @@ export interface ToastConfig {
   accentColor?: string;
 }
 
-const TOAST_ICON: Record<ToastType, keyof typeof import('@expo/vector-icons').Ionicons.glyphMap> = {
+const TOAST_ICON: Record<ToastType, any> = {
   success: 'checkmark-circle',
   error: 'alert-circle',
   info: 'information-circle',
