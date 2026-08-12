@@ -12,6 +12,7 @@ export interface HistoryItem {
   recipient?: {
     _id: string;
     username: string;
+    profilePicture?: string;
   };
 }
 

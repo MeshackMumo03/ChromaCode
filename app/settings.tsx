@@ -167,7 +167,17 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Privacy</ThemedText>
+          <ThemedText style={styles.sectionTitle}>Privacy & Information</ThemedText>
+          <SettingRow 
+            icon="document-text-outline" 
+            label="Privacy Policy & Release Notes" 
+            onPress={() => router.push('/privacy-policy' as any)} 
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <ThemedText style={{ fontSize: 12, color: colors.tint, fontWeight: '700' }}>v2.0.50</ThemedText>
+              <Ionicons name="chevron-forward" size={20} color={colors.icon} />
+            </View>
+          </SettingRow>
           <SettingRow 
             icon="person-remove-outline" 
             label="Blocked Users" 

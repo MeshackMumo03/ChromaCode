@@ -9,7 +9,9 @@ import {
   ActivityIndicator,
   RefreshControl,
   Animated,
+  Modal,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -243,6 +245,32 @@ export default function HomeScreen() {
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const headerAnim = useRef(new Animated.Value(0)).current;
   const { showToast } = useToast();
+
+  const [whatsNewVisible, setWhatsNewVisible] = useState(false);
+
+  // Check if update notification should pop up
+  useEffect(() => {
+    const checkVersionNotice = async () => {
+      try {
+        const seen = await AsyncStorage.getItem('chromacode_seen_v2_0_50');
+        if (!seen) {
+          setWhatsNewVisible(true);
+        }
+      } catch (e) {
+        console.error('Failed to read version notice key', e);
+      }
+    };
+    checkVersionNotice();
+  }, []);
+
+  const handleDismissWhatsNew = async () => {
+    setWhatsNewVisible(false);
+    try {
+      await AsyncStorage.setItem('chromacode_seen_v2_0_50', 'true');
+    } catch (e) {
+      console.error('Failed to save version notice key', e);
+    }
+  };
 
   // Animate header in on mount
   useEffect(() => {
@@ -529,6 +557,58 @@ export default function HomeScreen() {
             <ThemedText style={{ fontWeight: 'bold', color: colors.tint }}>Settings</ThemedText>.
           </ThemedText>
         </View>
+
+        {/* ── What's New Update Modal ── */}
+        <Modal
+          visible={whatsNewVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={handleDismissWhatsNew}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalCard, { backgroundColor: isDark ? '#1C1C28' : '#FFFFFF' }]}>
+              <View style={[styles.modalHeaderIcon, { backgroundColor: colors.tint + '18' }]}>
+                <Ionicons name="sparkles" size={28} color={colors.tint} />
+              </View>
+              <ThemedText style={[styles.modalTitle, { color: colors.text }]}>
+                What's New in v2.0.50 🚀
+              </ThemedText>
+              <ThemedText style={[styles.modalSub, { color: colors.icon }]}>
+                Check out the latest features and visual improvements:
+              </ThemedText>
+
+              <View style={styles.modalList}>
+                <ThemedText style={[styles.modalBullet, { color: colors.text }]}>
+                  🔍 <ThemedText style={{ fontWeight: 'bold' }}>Enlarged Search & Emoji Boxes:</ThemedText> Spacious inputs and larger emoji reaction boxes.
+                </ThemedText>
+                <ThemedText style={[styles.modalBullet, { color: colors.text }]}>
+                  🖼️ <ThemedText style={{ fontWeight: 'bold' }}>History Profile Images:</ThemedText> Recipient avatars now show custom user profile photos.
+                </ThemedText>
+                <ThemedText style={[styles.modalBullet, { color: colors.text }]}>
+                  🔒 <ThemedText style={{ fontWeight: 'bold' }}>Smart Notifications Privacy:</ThemedText> Suppresses self-delivery when logged in online.
+                </ThemedText>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.modalBtn, { backgroundColor: colors.tint }]}
+                onPress={handleDismissWhatsNew}
+              >
+                <ThemedText style={styles.modalBtnText}>Got It!</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalSecondaryBtn}
+                onPress={() => {
+                  handleDismissWhatsNew();
+                  router.push('/privacy-policy' as any);
+                }}
+              >
+                <ThemedText style={[styles.modalSecondaryText, { color: colors.tint }]}>
+                  View Privacy Policy & Changelog
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </SafeAreaView>
   );
@@ -589,16 +669,18 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1.5,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    marginBottom: 14,
+    minHeight: 52,
   },
   searchInput: {
     flex: 1,
-    fontSize: 15,
-    height: 22,
+    fontSize: 16,
+    height: 44,
+    paddingVertical: 8,
   },
   resultsContainer: {
     borderRadius: 14,
@@ -729,5 +811,71 @@ const styles = StyleSheet.create({
   blurbBody: {
     fontSize: 13,
     lineHeight: 21,
+  },
+  // ── Modal ──
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    width: '100%',
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+  },
+  modalHeaderIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  modalSub: {
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 18,
+  },
+  modalList: {
+    width: '100%',
+    gap: 10,
+    marginBottom: 22,
+  },
+  modalBullet: {
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  modalBtn: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  modalBtnText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  modalSecondaryBtn: {
+    paddingVertical: 8,
+  },
+  modalSecondaryText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

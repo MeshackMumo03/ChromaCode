@@ -14,6 +14,8 @@ import { ThemedText } from '@/components/themed-text';
 import { useHistory, HistoryItem } from '@/hooks/useHistory';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Image as ExpoImage } from 'expo-image';
+import { getImageUrl } from '@/constants/api';
 import { Ionicons } from '@expo/vector-icons';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -147,11 +149,19 @@ const HistoryCard = ({
         <View style={styles.cardFooter}>
           {recipientName ? (
             <View style={styles.recipientRow}>
-              <View style={[styles.recipientAvatar, { backgroundColor: recipientColor }]}>
-                <ThemedText style={styles.recipientInitials}>
-                  {getInitials(recipientName)}
-                </ThemedText>
-              </View>
+              {item.recipient?.profilePicture ? (
+                <ExpoImage
+                  source={{ uri: getImageUrl(item.recipient.profilePicture) }}
+                  style={styles.recipientAvatar}
+                  contentFit="cover"
+                />
+              ) : (
+                <View style={[styles.recipientAvatar, { backgroundColor: recipientColor }]}>
+                  <ThemedText style={styles.recipientInitials}>
+                    {getInitials(recipientName)}
+                  </ThemedText>
+                </View>
+              )}
               <ThemedText style={[styles.recipientName, { color: colors.icon }]}>
                 {recipientName}
               </ThemedText>

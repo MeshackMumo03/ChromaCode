@@ -7,7 +7,7 @@ const authMiddleware = require('../middleware/authMiddleware'); // Import entire
 router.get('/', async (req, res) => {
     try {
         // Ensure that only history items belonging to the logged-in user are fetched
-        const items = await HistoryItem.find({ user: req.user.id }).populate('recipient', 'username').sort({ timestamp: -1 });
+        const items = await HistoryItem.find({ user: req.user.id }).populate('recipient', 'username profilePicture').sort({ timestamp: -1 });
         res.json(items);
     } catch (error) {
         console.error('Error fetching history:', error);
