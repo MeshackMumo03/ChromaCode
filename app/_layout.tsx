@@ -1,8 +1,8 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, ThemeProvider, DarkTheme, DefaultTheme } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import { useEffect } from 'react';
+import * as SplashScreen from 'expo-splash-screen';
 import * as SplashScreen from 'expo-splash-screen';
 
 // Keep the splash screen visible while we initialize
