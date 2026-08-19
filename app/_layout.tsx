@@ -15,7 +15,7 @@ import { CodesProvider } from '@/hooks/useCodes';
 import { useNotifications } from '@/hooks/useNotifications';
 import { SocketProvider } from '@/hooks/useSocket';
 import { ConversationsProvider } from '@/hooks/useConversations';
-import { ToastProvider } from '@/hooks/useToast';
+import { ToastProvider, useToast } from '@/hooks/useToast';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const unstable_settings = {
@@ -24,7 +24,7 @@ export const unstable_settings = {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  const { isLoading, isInitializing, token } = useAuth();
+  const { isInitializing, token } = useAuth();
   const router = useRouter();
   
   const { showToast } = useToast();
