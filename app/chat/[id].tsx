@@ -120,8 +120,6 @@ const VideoLightbox = ({ url, token }: { url: string; token: string | null }) =>
     <VideoView
       player={player}
       style={styles.fullMedia}
-      allowsFullscreen
-      allowsPictureInPicture
       contentFit="contain"
     />
   );

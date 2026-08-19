@@ -27,7 +27,32 @@ function RootLayoutNav() {
   const { isLoading, isInitializing, token } = useAuth();
   const router = useRouter();
   
+  const { showToast } = useToast();
+  
   useNotifications();
+
+  // Show update toast on new version
+  useEffect(() => {
+    const checkUpdateToast = async () => {
+      try {
+        const lastVersion = await AsyncStorage.getItem('chromacode_last_toast_version');
+        const APP_VERSION = '2.0.50'; // Current version
+        
+        if (lastVersion !== APP_VERSION) {
+          showToast(
+            `Updates / Bug fixes:\n1. Toast theme matching\n2. Settings version unified\n3. Privacy & Release Notes moved\n...and more!`,
+            'info',
+            'ChromaCode v' + APP_VERSION
+          );
+          await AsyncStorage.setItem('chromacode_last_toast_version', APP_VERSION);
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    // small delay so it shows after app renders
+    setTimeout(checkUpdateToast, 1500);
+  }, []);
 
   // Maintenance: Clear bloated cache from previous versions if needed
   useEffect(() => {

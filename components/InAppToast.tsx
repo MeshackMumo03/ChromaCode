@@ -148,9 +148,9 @@ const styles = StyleSheet.create({
   toastContainer: {
     position: 'absolute',
     // Increased top padding to clear the status bar / notch on both platforms.
-    // iOS: 56px clears the tallest Dynamic Island / notch.
-    // Android: 40px clears the status bar with a comfortable buffer.
-    top: Platform.OS === 'ios' ? 56 : 40,
+    // iOS: 80px clears the tallest Dynamic Island / notch.
+    // Android: 70px clears the status bar with a comfortable buffer.
+    top: Platform.OS === 'ios' ? 80 : 70,
     left: 16,
     right: 16,
     zIndex: 9999,
