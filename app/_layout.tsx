@@ -3,7 +3,6 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import { useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
-import * as SplashScreen from 'expo-splash-screen';
 
 // Keep the splash screen visible while we initialize
 SplashScreen.preventAutoHideAsync();
