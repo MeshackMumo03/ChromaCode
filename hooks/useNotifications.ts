@@ -1,13 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
-import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { useAuth } from './useAuth';
 import { getBaseUrl } from '@/constants/api';
 
-// Dynamic import for Notifications to avoid side-effects in Expo Go
+// Dynamic import to avoid native module missing crashes in OTA updates
+let Device: any = null;
 let Notifications: any = null;
+
 if (Constants.appOwnership !== 'expo') {
+  try {
+    Device = require('expo-device');
+  } catch (e) {
+    console.log('expo-device not available');
+  }
   try {
     Notifications = require('expo-notifications');
   } catch (e) {
@@ -99,7 +105,7 @@ async function registerForPushNotificationsAsync() {
     });
   }
 
-  if (Device.isDevice) {
+  if (Device?.isDevice) {
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
     if (existingStatus !== 'granted') {
