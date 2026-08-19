@@ -11,20 +11,7 @@ export interface User {
   friends: string[];
   pushToken?: string;
   blockedUsers?: string[];
-}
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import * as SecureStore from 'expo-secure-store'; // For storing JWT securely
-import { useRouter } from 'expo-router'; // Import useRouter
-import { getBaseUrl } from '@/constants/api'; // Import getBaseUrl from centralized file
-
-export interface User {
-  _id: string;
-  username: string;
-  email: string;
-  profilePicture: string;
-  friends: string[];
-  pushToken?: string;
-  blockedUsers?: string[];
+  isVerified?: boolean;
 }
 
 interface AuthContextType {
@@ -58,7 +45,7 @@ export function useAuth() {
       login: async () => false,
       register: async () => ({ success: false }),
       verifyEmail: async () => false,
-      resendVerificationEmail: async () => ({ success: false }),
+      resendVerificationEmail: async () => ({ success: false, message: undefined }),
       forgotPassword: async () => false,
       resetPassword: async () => false,
       googleLogin: async () => false,
