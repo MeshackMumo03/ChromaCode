@@ -829,7 +829,11 @@ export default function ChatScreen() {
           />
           <View>
             <ThemedText style={styles.headerUsername}>{title}</ThemedText>
-            {isOnline && (
+            {typingUser ? (
+              <ThemedText style={{ fontSize: 12, color: colors.tint, fontStyle: 'italic' }}>
+                typing...
+              </ThemedText>
+            ) : isOnline ? (
               <View style={{ flexDirection: "row", alignItems: "center" }}>
                 <View
                   style={{
@@ -844,6 +848,10 @@ export default function ChatScreen() {
                   online
                 </ThemedText>
               </View>
+            ) : (
+              <ThemedText style={{ fontSize: 10, color: colors.icon }}>
+                offline
+              </ThemedText>
             )}
           </View>
         </View>
@@ -862,7 +870,7 @@ export default function ChatScreen() {
           </TouchableOpacity>
         ) : null,
     });
-  }, [name, avatar, conversation, isOnline, colors.tint, id, navigation, router, user?._id]);
+  }, [name, avatar, conversation, isOnline, typingUser, colors.tint, colors.icon, id, navigation, router, user?._id]);
 
   useEffect(() => {
     const init = async () => {

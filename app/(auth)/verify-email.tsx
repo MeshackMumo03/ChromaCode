@@ -12,7 +12,8 @@ import { useToast } from '@/hooks/useToast';
 
 export default function VerifyEmailScreen() {
   const { email } = useLocalSearchParams<{ email: string }>();
-  const { verifyEmail, isLoading } = useAuth();
+  const [isResending, setIsResending] = useState(false);
+  const { verifyEmail, resendVerificationEmail, isLoading } = useAuth();
   const [code, setCode] = useState('');
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -32,6 +33,17 @@ export default function VerifyEmailScreen() {
     } else {
       showToast('Invalid or expired code', 'error', 'Verification Failed');
     }
+  };
+
+  const handleResend = async () => {
+    setIsResending(true);
+    const { success, message } = await resendVerificationEmail(email);
+    if (success) {
+      showToast(message || 'Verification code resent successfully', 'success');
+    } else {
+      showToast(message || 'Failed to resend code', 'error');
+    }
+    setIsResending(false);
   };
 
   return (
@@ -58,6 +70,13 @@ export default function VerifyEmailScreen() {
           isLoading={isLoading}
           style={styles.button}
         />
+
+        <ThemedText 
+          style={[styles.link, { color: colors.tint, marginBottom: 20 }]}
+          onPress={handleResend}
+        >
+          {isResending ? 'Resending...' : 'Resend Code'}
+        </ThemedText>
 
         <ThemedText 
           style={[styles.link, { color: colors.tint }]}

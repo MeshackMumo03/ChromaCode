@@ -7,9 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
-
-// Version calculation: Major version 2, minor version derived from 50 commits/pushes = v2.0.50
-export const APP_VERSION = '2.0.50';
+import { APP_VERSION } from '@/constants/version';
 
 export default function PrivacyPolicyScreen() {
   const colorScheme = useColorScheme();

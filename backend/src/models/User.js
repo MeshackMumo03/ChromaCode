@@ -59,6 +59,9 @@ const UserSchema = mongoose.Schema(
     verificationCode: {
       type: String,
     },
+    verificationCodeSentAt: {
+      type: Date,
+    },
     resetPasswordCode: {
       type: String,
     },

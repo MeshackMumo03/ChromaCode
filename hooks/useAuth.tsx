@@ -12,6 +12,20 @@ export interface User {
   pushToken?: string;
   blockedUsers?: string[];
 }
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import * as SecureStore from 'expo-secure-store'; // For storing JWT securely
+import { useRouter } from 'expo-router'; // Import useRouter
+import { getBaseUrl } from '@/constants/api'; // Import getBaseUrl from centralized file
+
+export interface User {
+  _id: string;
+  username: string;
+  email: string;
+  profilePicture: string;
+  friends: string[];
+  pushToken?: string;
+  blockedUsers?: string[];
+}
 
 interface AuthContextType {
   user: User | null;
@@ -19,6 +33,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   register: (username: string, email: string, password: string) => Promise<{ success: boolean; needsVerification?: boolean; email?: string }>;
   verifyEmail: (email: string, code: string) => Promise<boolean>;
+  resendVerificationEmail: (email: string) => Promise<{ success: boolean; message?: string }>;
   forgotPassword: (email: string) => Promise<boolean>;
   resetPassword: (email: string, code: string, newPassword: string) => Promise<boolean>;
   googleLogin: (userInfo: any) => Promise<boolean>;
@@ -43,6 +58,7 @@ export function useAuth() {
       login: async () => false,
       register: async () => ({ success: false }),
       verifyEmail: async () => false,
+      resendVerificationEmail: async () => ({ success: false }),
       forgotPassword: async () => false,
       resetPassword: async () => false,
       googleLogin: async () => false,
@@ -179,6 +195,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const resendVerificationEmail = async (email: string): Promise<{ success: boolean; message?: string }> => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`${BASE_URL}/users/resend-verification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        return { success: true, message: data.message };
+      } else {
+        return { success: false, message: data.message || 'Failed to resend code' };
+      }
+    } catch (error) {
+      return { success: false, message: 'Network error' };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const forgotPassword = async (email: string): Promise<boolean> => {
     try {
       setIsLoading(true);
@@ -310,7 +347,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [token]);
 
   return (
-    <AuthContext.Provider value={{ user, token, login, register, googleLogin, verifyEmail, forgotPassword, resetPassword, logout, isLoading, isInitializing, updateUser, fetchUser }}>
+    <AuthContext.Provider value={{ user, token, login, register, googleLogin, verifyEmail, resendVerificationEmail, forgotPassword, resetPassword, logout, isLoading, isInitializing, updateUser, fetchUser }}>
       {children}
     </AuthContext.Provider>
   );

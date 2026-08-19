@@ -5,6 +5,9 @@
  * SettingsProvider and ThemeProvider in the tree.  It must NOT call any hook
  * that relies on those contexts (useColorScheme, ThemedText, useSettings…).
  * Use React Native's built-in useColorScheme and plain <Text> instead.
+ *
+ * The optional `isDark` prop lets ToastProvider override OS-level detection
+ * with the user's explicit in-app theme preference.
  */
 import React, { useEffect, useRef } from 'react';
 import {
@@ -43,12 +46,15 @@ const TOAST_BG: Record<ToastType, string> = {
 interface InAppToastProps {
   config: ToastConfig;
   onHide: () => void;
+  /** Override OS color scheme with the user's explicit in-app preference */
+  isDark?: boolean;
 }
 
-export const InAppToast: React.FC<InAppToastProps> = ({ config, onHide }) => {
-  // Use RN's built-in hook – no context required
+export const InAppToast: React.FC<InAppToastProps> = ({ config, onHide, isDark: isDarkProp }) => {
+  // Fall back to OS color scheme only when no explicit override is provided.
+  // ToastProvider passes the user's in-app preference via `isDarkProp`.
   const scheme = useRNColorScheme();
-  const isDark = scheme === 'dark';
+  const isDark = isDarkProp !== undefined ? isDarkProp : scheme === 'dark';
 
   const translateY = useRef(new Animated.Value(-120)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -141,7 +147,10 @@ export const InAppToast: React.FC<InAppToastProps> = ({ config, onHide }) => {
 const styles = StyleSheet.create({
   toastContainer: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 0 : 8,
+    // Increased top padding to clear the status bar / notch on both platforms.
+    // iOS: 56px clears the tallest Dynamic Island / notch.
+    // Android: 40px clears the status bar with a comfortable buffer.
+    top: Platform.OS === 'ios' ? 56 : 40,
     left: 16,
     right: 16,
     zIndex: 9999,

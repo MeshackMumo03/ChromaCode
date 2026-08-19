@@ -1,5 +1,16 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+  ReactNode,
+} from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useColorScheme as useRNColorScheme } from 'react-native';
 import { InAppToast, ToastConfig, ToastType } from '@/components/InAppToast';
+
+const THEME_PREFERENCE_KEY = 'chromacode_theme_preference';
 
 interface ToastContextType {
   showToast: (message: string, type?: ToastType, subtitle?: string, accentColor?: string) => void;
@@ -15,11 +26,51 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     type: 'success',
   });
 
+  // Resolve isDark for the toast card. ToastProvider sits above SettingsProvider
+  // in the tree, so we cannot call useSettings() here. Instead we read the same
+  // AsyncStorage key that SettingsProvider writes to whenever the user changes theme.
+  const osScheme = useRNColorScheme();
+  const [isDark, setIsDark] = useState<boolean | undefined>(undefined);
+
+  useEffect(() => {
+    const resolve = async () => {
+      try {
+        const pref = await AsyncStorage.getItem(THEME_PREFERENCE_KEY);
+        if (pref === 'dark') setIsDark(true);
+        else if (pref === 'light') setIsDark(false);
+        else setIsDark(osScheme === 'dark'); // 'system' or null → follow OS
+      } catch {
+        setIsDark(osScheme === 'dark');
+      }
+    };
+    resolve();
+  }, [osScheme]);
+
+  // Re-sync whenever the user navigates back to the app (AppState active) or
+  // whenever the OS scheme flips (covers 'system' preference).
+  useEffect(() => {
+    AsyncStorage.getItem(THEME_PREFERENCE_KEY).then((pref) => {
+      if (pref === 'dark') setIsDark(true);
+      else if (pref === 'light') setIsDark(false);
+      else setIsDark(osScheme === 'dark');
+    });
+  }, [osScheme]);
+
   const showToast = useCallback(
     (message: string, type: ToastType = 'success', subtitle?: string, accentColor?: string) => {
-      setToastConfig({ visible: true, message, type, subtitle, accentColor });
+      // Resolve the theme right before showing the toast so it always reflects the latest setting.
+      AsyncStorage.getItem(THEME_PREFERENCE_KEY).then((pref) => {
+        if (pref === 'dark') setIsDark(true);
+        else if (pref === 'light') setIsDark(false);
+        else setIsDark(osScheme === 'dark');
+        
+        setToastConfig({ visible: true, message, type, subtitle, accentColor });
+      }).catch(() => {
+        setIsDark(osScheme === 'dark');
+        setToastConfig({ visible: true, message, type, subtitle, accentColor });
+      });
     },
-    []
+    [osScheme]
   );
 
   const hideToast = useCallback(() => {
@@ -29,8 +80,8 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   return (
     <ToastContext.Provider value={{ showToast, hideToast }}>
       {children}
-      {/* InAppToast is self-contained and has NO context dependencies */}
-      <InAppToast config={toastConfig} onHide={hideToast} />
+      {/* InAppToast is self-contained; isDark overrides OS detection with user pref */}
+      <InAppToast config={toastConfig} onHide={hideToast} isDark={isDark} />
     </ToastContext.Provider>
   );
 };

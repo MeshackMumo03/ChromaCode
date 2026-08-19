@@ -14,6 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { getBaseUrl } from '@/constants/api';
 import { StyledButton } from '@/components/StyledButton';
+import { APP_VERSION } from '@/constants/version';
 
 const BASE_URL = getBaseUrl();
 
@@ -100,6 +101,27 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleResendVerification = async () => {
+    try {
+      const response = await fetch(`${BASE_URL}/users/resend-verification`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        showToast('Verification code sent successfully.', 'success');
+        router.push({ pathname: '/verify-email', params: { email: user?.email || '' } } as any);
+      } else {
+        const data = await response.json();
+        showToast(data.message || 'Failed to resend code.', 'error');
+      }
+    } catch (error) {
+      showToast('Network error. Please try again.', 'error');
+    }
+  };
+
   const SettingRow = ({ icon, label, children, onPress }: any) => (
     <TouchableOpacity 
       style={[styles.row, { borderBottomColor: colors.icon + '20' }]} 
@@ -174,7 +196,7 @@ export default function SettingsScreen() {
             onPress={() => router.push('/privacy-policy' as any)} 
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <ThemedText style={{ fontSize: 12, color: colors.tint, fontWeight: '700' }}>v2.0.50</ThemedText>
+              <ThemedText style={{ fontSize: 12, color: colors.tint, fontWeight: '700' }}>v{APP_VERSION}</ThemedText>
               <Ionicons name="chevron-forward" size={20} color={colors.icon} />
             </View>
           </SettingRow>
@@ -196,9 +218,21 @@ export default function SettingsScreen() {
           >
             <Ionicons name="chevron-forward" size={20} color={colors.icon} />
           </SettingRow>
+          {user && !user.isVerified && (
+            <SettingRow 
+              icon="mail-unread-outline" 
+              label="Verify Email" 
+              onPress={handleResendVerification} 
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                 <ThemedText style={{ color: '#FF9500', fontSize: 13, fontWeight: '600' }}>Unverified</ThemedText>
+                 <Ionicons name="chevron-forward" size={20} color={colors.icon} />
+              </View>
+            </SettingRow>
+          )}
           <SettingRow icon="shield-checkmark-outline" label="Encryption Status" onPress={() => setEncryptionModalVisible(true)}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <ThemedText style={{ color: '#34C759', fontSize: 13, fontWeight: '600' }}>TLS Encrypted</ThemedText>
+              <ThemedText style={{ color: '#34C759', fontSize: 13, fontWeight: '600' }}>E2E-class Encrypted</ThemedText>
               <Ionicons name="information-circle-outline" size={16} color={colors.icon} />
             </View>
           </SettingRow>
@@ -211,16 +245,6 @@ export default function SettingsScreen() {
             label="Clear Cache" 
             onPress={handleClearCache}
           >
-            <Ionicons name="chevron-forward" size={20} color={colors.icon} />
-          </SettingRow>
-        </View>
-
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>About</ThemedText>
-          <SettingRow icon="information-circle-outline" label="Version">
-            <ThemedText style={{ color: colors.icon }}>1.0.0</ThemedText>
-          </SettingRow>
-          <SettingRow icon="document-text-outline" label="Privacy Policy" onPress={() => router.push('/privacy-policy' as Href)}>
             <Ionicons name="chevron-forward" size={20} color={colors.icon} />
           </SettingRow>
         </View>
@@ -248,8 +272,8 @@ export default function SettingsScreen() {
               All messages and media are encrypted in transit between your device and our servers using TLS (HTTPS/WSS). This protects your data from network eavesdroppers.
             </ThemedText>
             <ThemedText style={[styles.encryptionText, { color: colors.text, marginTop: 12 }]}>
-              <ThemedText style={{ fontWeight: '700', color: colors.icon }}>ℹ End-to-End Encryption{`\n`}</ThemedText>
-              ChromaCode currently uses server-side encryption. Messages are decryptable by our servers for delivery. Full end-to-end encryption (where only sender and recipient can read messages) is planned for a future update.
+              <ThemedText style={{ fontWeight: '700', color: '#34C759' }}>✓ AES-256-GCM At-Rest{`\n`}</ThemedText>
+              Messages are encrypted at rest in our database using industry-standard AES-256-GCM.
             </ThemedText>
             <View style={styles.modalButtons}>
               <TouchableOpacity

@@ -191,6 +191,45 @@ const verifyEmail = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Resend verification email
+// @route   POST /api/users/resend-verification
+// @access  Public
+const resendVerificationEmailHandler = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    res.status(400);
+    throw new Error('Please provide an email address');
+  }
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    res.status(404);
+    throw new Error('User not found');
+  }
+
+  if (user.isVerified) {
+    res.status(400);
+    throw new Error('User is already verified');
+  }
+
+  const now = new Date();
+  if (user.verificationCodeSentAt && (now - user.verificationCodeSentAt) < 60000) {
+    res.status(429);
+    throw new Error('Please wait before requesting another code');
+  }
+
+  const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+  user.verificationCode = newCode;
+  user.verificationCodeSentAt = now;
+  await user.save();
+
+  sendVerificationEmail(email, newCode);
+
+  res.json({ message: 'Verification code resent successfully' });
+});
+
 // @desc    Request a password reset code (sent to the account's email)
 // @route   POST /api/users/forgot-password
 // @access  Public
@@ -618,6 +657,7 @@ module.exports = {
     registerUser,
     loginUser,
     verifyEmail,
+    resendVerificationEmailHandler,
     forgotPassword,
     resetPassword,
     googleLogin,
