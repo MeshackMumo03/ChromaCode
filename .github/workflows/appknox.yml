@@ -2,9 +2,9 @@ name: Appknox Security Scan
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ v1 ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ v1 ]
 
 jobs:
   appknox-scan:
@@ -17,11 +17,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
+
+      - name: Setup EAS CLI
+        run: npm install -g eas-cli
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Android project (Expo prebuild)
+        run: npx expo prebuild --platform android --clean --no-install
+        env:
+          EXPO_NO_GIT_STATUS: '1'
 
       - name: Build Android APK
         working-directory: android
@@ -30,15 +46,8 @@ jobs:
           ./gradlew assembleRelease
 
       - name: Run Appknox Scan
-        uses: appknox/appknox-github-action@v1
+        uses: appknox/appknox-github-action@1.1.2
         with:
           appknox_access_token: ${{ secrets.APPKNOX_ACCESS_TOKEN }}
           file_path: 'android/app/build/outputs/apk/release/app-release.apk'
           risk_threshold: 'medium'
-
-      - name: Upload SARIF report
-        if: always()
-        continue-on-error: true
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: appknox-results.sarif
