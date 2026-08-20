@@ -40,9 +40,9 @@ function RootLayoutNav() {
         
         if (lastVersion !== APP_VERSION) {
           showToast(
-            `Updates / Bug fixes:\n1. Toast theme matching\n2. Settings version unified\n3. Privacy & Release Notes moved\n...and more!`,
-            'info',
-            'ChromaCode v' + APP_VERSION
+            `🎉 We're back! ChromaCode is fully restored.\n\n✅ Fixed: App startup crash\n✅ Fixed: Messages showing as encrypted text\n✅ Upgraded audio to latest SDK\n✅ Performance improvements\n\nThank you for your patience! 💜`,
+            'success',
+            '🚀 ChromaCode v' + APP_VERSION + ' — App Restored'
           );
           await AsyncStorage.setItem('chromacode_last_toast_version', APP_VERSION);
         }
