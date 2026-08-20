@@ -36,7 +36,7 @@ function RootLayoutNav() {
     const checkUpdateToast = async () => {
       try {
         const lastVersion = await AsyncStorage.getItem('chromacode_last_toast_version');
-        const APP_VERSION = '2.0.51'; // Current version
+        const APP_VERSION = '2.71'; // Current version
         
         if (lastVersion !== APP_VERSION) {
           showToast(
