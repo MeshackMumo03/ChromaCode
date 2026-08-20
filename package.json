@@ -23,7 +23,7 @@
     "bcryptjs": "^3.0.3",
     "concurrently": "^9.2.1",
     "expo": "~57.0.12",
-    "expo-av": "~16.0.8",
+    "expo-audio": "~57.0.3",
     "expo-constants": "~57.0.10",
     "expo-device": "~57.0.1",
     "expo-document-picker": "~57.0.1",

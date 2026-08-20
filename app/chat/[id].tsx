@@ -10,7 +10,7 @@ import { useSocket } from "@/hooks/useSocket";
 import { useToast } from "@/hooks/useToast";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Audio } from "expo-av";
+import { AudioModule, AudioPlayer, RecordingPresets } from "expo-audio";
 import * as Haptics from "expo-haptics";
 
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
@@ -717,9 +717,9 @@ export default function ChatScreen() {
   const [hasMore, setHasMore] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [recording, setRecording] = useState<any>(null);
   const [isRecording, setIsRecording] = useState(false);
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [sound, setSound] = useState<AudioPlayer | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [loadingSoundId, setLoadingSoundId] = useState<string | null>(null);
 
@@ -1220,8 +1220,8 @@ export default function ChatScreen() {
 
   const startRecording = async () => {
     try {
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== "granted") {
+      const permStatus = await AudioModule.requestRecordingPermissionsAsync();
+      if (!permStatus.granted) {
         showToast(
           "Mic permission is required to record audio.",
           "error",
@@ -1229,14 +1229,10 @@ export default function ChatScreen() {
         );
         return;
       }
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY,
-      );
-      setRecording(recording);
+      const recorder = new AudioModule.AudioRecorder(RecordingPresets.HIGH_QUALITY);
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+      setRecording(recorder);
       setIsRecording(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch (err) {
@@ -1249,8 +1245,8 @@ export default function ChatScreen() {
     setIsRecording(false);
     setRecording(null);
     try {
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
+      await recording.stop();
+      const uri = recording.uri;
       if (uri) {
         const mediaData = await uploadFile(
           uri,
@@ -1267,27 +1263,22 @@ export default function ChatScreen() {
 
   const playSound = async (uri: string, messageId: string) => {
     try {
-      if (sound) await sound.unloadAsync();
+      if (sound) {
+        sound.remove();
+      }
       setLoadingSoundId(messageId);
       const fullUri = getImageUrl(uri);
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
-        shouldDuckAndroid: true,
-      });
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        {
-          uri: fullUri,
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        },
-        { shouldPlay: true, volume: 1.0 },
-      );
-      setSound(newSound);
+      const player = new AudioPlayer(fullUri);
+      player.play();
+      setSound(player);
       setPlayingId(messageId);
       setLoadingSoundId(null);
-      newSound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) setPlayingId(null);
+      // Listen for playback completion
+      const subscription = player.addListener('playbackStatusUpdate', (status: any) => {
+        if (status.didJustFinish) {
+          setPlayingId(null);
+          subscription?.remove();
+        }
       });
     } catch (error) {
       console.error("Error playing sound:", error);

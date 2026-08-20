@@ -6,6 +6,7 @@ const User = require('../models/User');
 const Code = require('../models/Code');
 const { PRESET_CODES } = require('../constants/presetCodes');
 const { sendPushNotification } = require('../utils/notifications');
+const { encrypt, decrypt } = require('../utils/encryption');
 
 /**
  * Manually populate preset codes into the message object.
@@ -89,7 +90,7 @@ const startConversation = asyncHandler(async (req, res) => {
   const message = new Message({
     conversationId: conversation._id,
     sender: senderId,
-    text: text || '',
+    text: encrypt(text || ''),
     codeId: validCodeId,
     presetCodeId: isPreset ? codeId : undefined,
     replyTo: validReplyTo,
@@ -131,6 +132,12 @@ const startConversation = asyncHandler(async (req, res) => {
   let socketMessage = message.toObject();
   delete socketMessage.mediaData;
   socketMessage = populatePresetCodeObj(socketMessage);
+  
+  // Decrypt text for the response
+  if (socketMessage.text) socketMessage.text = decrypt(socketMessage.text);
+  if (socketMessage.replyTo && socketMessage.replyTo.text) {
+    socketMessage.replyTo.text = decrypt(socketMessage.replyTo.text);
+  }
 
   // Emit socket event to ALL participants (including sender for sync)
   const io = req.app.get('io');
@@ -216,6 +223,9 @@ const getConversations = asyncHandler(async (req, res) => {
     });
     
     conv.unreadCount = unreadCount;
+    if (conv.lastMessage && conv.lastMessage.text) {
+      conv.lastMessage.text = decrypt(conv.lastMessage.text);
+    }
     return conv;
   }));
 
@@ -261,7 +271,14 @@ const getConversation = asyncHandler(async (req, res) => {
     .lean();
 
   // Inject preset code details for any message that uses a preset
-  const populatedMessages = messages.map(msg => populatePresetCodeObj(msg));
+  const populatedMessages = messages.map(msg => {
+    const populated = populatePresetCodeObj(msg);
+    if (populated.text) populated.text = decrypt(populated.text);
+    if (populated.replyTo && populated.replyTo.text) {
+      populated.replyTo.text = decrypt(populated.replyTo.text);
+    }
+    return populated;
+  });
 
   // Return messages in chronological order for the frontend
   res.json({ 
@@ -317,7 +334,7 @@ const sendMessage = asyncHandler(async (req, res) => {
   const message = new Message({
     conversationId,
     sender: senderId,
-    text: text || '',
+    text: encrypt(text || ''),
     codeId: validCodeId,
     presetCodeId: isPreset ? codeId : undefined,
     replyTo: validReplyTo,
@@ -354,6 +371,11 @@ const sendMessage = asyncHandler(async (req, res) => {
   let socketMessage = message.toObject();
   delete socketMessage.mediaData;
   socketMessage = populatePresetCodeObj(socketMessage);
+  
+  if (socketMessage.text) socketMessage.text = decrypt(socketMessage.text);
+  if (socketMessage.replyTo && socketMessage.replyTo.text) {
+    socketMessage.replyTo.text = decrypt(socketMessage.replyTo.text);
+  }
 
   // Explicitly update lastMessage and updatedAt to force sorting to work
   conversation.lastMessage = message._id;

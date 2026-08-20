@@ -50,8 +50,14 @@ export default {
       "expo-secure-store",
       "expo-web-browser",
       "expo-updates",
-      "expo-image",
-      "expo-status-bar"
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone.",
+          "recordAudioAndroid": true,
+          "enableBackgroundPlayback": false
+        }
+      ]
     ],
     "runtimeVersion": {
       "policy": "appVersion"
