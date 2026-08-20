@@ -10,7 +10,7 @@ import { useSocket } from "@/hooks/useSocket";
 import { useToast } from "@/hooks/useToast";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { AudioModule, AudioPlayer, RecordingPresets } from "expo-audio";
+import { AudioModule, useAudioPlayer, useAudioRecorder, RecordingPresets } from "expo-audio";
 import * as Haptics from "expo-haptics";
 
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
@@ -719,7 +719,9 @@ export default function ChatScreen() {
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [recording, setRecording] = useState<any>(null);
   const [isRecording, setIsRecording] = useState(false);
-  const [sound, setSound] = useState<AudioPlayer | null>(null);
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const audioPlayer = useAudioPlayer();
+  const [sound, setSound] = useState<any>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [loadingSoundId, setLoadingSoundId] = useState<string | null>(null);
 
@@ -1229,10 +1231,9 @@ export default function ChatScreen() {
         );
         return;
       }
-      const recorder = new AudioModule.AudioRecorder(RecordingPresets.HIGH_QUALITY);
-      await recorder.prepareToRecordAsync();
-      recorder.record();
-      setRecording(recorder);
+      await audioRecorder.prepareToRecordAsync();
+      audioRecorder.record();
+      setRecording(audioRecorder);
       setIsRecording(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch (err) {
@@ -1263,18 +1264,15 @@ export default function ChatScreen() {
 
   const playSound = async (uri: string, messageId: string) => {
     try {
-      if (sound) {
-        sound.remove();
-      }
       setLoadingSoundId(messageId);
       const fullUri = getImageUrl(uri);
-      const player = new AudioPlayer(fullUri);
-      player.play();
-      setSound(player);
+      audioPlayer.replace(fullUri);
+      audioPlayer.play();
+      setSound(audioPlayer);
       setPlayingId(messageId);
       setLoadingSoundId(null);
       // Listen for playback completion
-      const subscription = player.addListener('playbackStatusUpdate', (status: any) => {
+      const subscription = audioPlayer.addListener('playbackStatusUpdate', (status: any) => {
         if (status.didJustFinish) {
           setPlayingId(null);
           subscription?.remove();
