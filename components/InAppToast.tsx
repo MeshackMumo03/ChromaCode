@@ -9,17 +9,17 @@
  * The optional `isDark` prop lets ToastProvider override OS-level detection
  * with the user's explicit in-app theme preference.
  */
+import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef } from 'react';
 import {
-  View,
-  Text,
-  Animated,
-  Easing,
-  StyleSheet,
-  Platform,
-  useColorScheme as useRNColorScheme,
+    Animated,
+    Easing,
+    Platform,
+    StyleSheet,
+    Text,
+    useColorScheme as useRNColorScheme,
+    View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 
 export type ToastType = 'success' | 'error' | 'info';
 
@@ -93,7 +93,7 @@ export const InAppToast: React.FC<InAppToastProps> = ({ config, onHide, isDark: 
             useNativeDriver: true,
           }),
         ]).start(() => onHide());
-      }, 3500);
+      }, 7000);
 
       return () => clearTimeout(timer);
     } else {
@@ -129,7 +129,7 @@ export const InAppToast: React.FC<InAppToastProps> = ({ config, onHide, isDark: 
 
           {/* Text */}
           <View style={styles.toastTextWrap}>
-            <Text style={[styles.toastTitle, { color: titleColor }]} numberOfLines={2}>
+            <Text style={[styles.toastTitle, { color: titleColor }]} numberOfLines={6}>
               {config.message}
             </Text>
             {config.subtitle ? (

@@ -36,15 +36,16 @@ function RootLayoutNav() {
   useEffect(() => {
     const checkUpdateToast = async () => {
       try {
-        const lastVersion = await AsyncStorage.getItem('chromacode_last_toast_version');
+        const toastKey = 'chromacode_last_toast_' + APP_VERSION.replace(/\./g, '_');
+        const lastVersion = await AsyncStorage.getItem(toastKey);
         
         if (lastVersion !== APP_VERSION) {
           showToast(
-            `🎉 We're back! ChromaCode is fully restored.\n\n✅ Fixed: App startup crash\n✅ Fixed: Messages showing as encrypted text\n✅ Upgraded audio to latest SDK\n✅ Performance improvements\n\nThank you for your patience! 💜`,
+            `ChromaCode v${APP_VERSION} is here.\n• End-to-end encrypted messaging\n• Secure image / video / audio / document uploads\n• Profile banner upload\n• Multi-device presence & notifications\n• Bot signals and reliability fixes\n\nSee Settings > Privacy for full release notes.`,
             'success',
-            '🚀 ChromaCode v' + APP_VERSION + ' — App Restored'
+            `What's New in v${APP_VERSION}`
           );
-          await AsyncStorage.setItem('chromacode_last_toast_version', APP_VERSION);
+          await AsyncStorage.setItem(toastKey, APP_VERSION);
         }
       } catch (e) {
         // ignore

@@ -1,28 +1,27 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  StyleSheet,
-  View,
-  TextInput,
-  FlatList,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-  RefreshControl,
-  Animated,
-  Modal,
-} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'expo-router';
+import { getBaseUrl, getImageUrl } from '@/constants/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { getBaseUrl, getImageUrl } from '@/constants/api';
-import { Ionicons } from '@expo/vector-icons';
-import { Image as ExpoImage } from 'expo-image';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Image as ExpoImage } from 'expo-image';
+import { useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    Animated,
+    FlatList,
+    Modal,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const BASE_URL = getBaseUrl();
 
@@ -248,11 +247,13 @@ export default function HomeScreen() {
 
   const [whatsNewVisible, setWhatsNewVisible] = useState(false);
 
+  const versionNoticeKey = 'chromacode_seen_v' + APP_VERSION.replace(/\./g, '_');
+
   // Check if update notification should pop up
   useEffect(() => {
     const checkVersionNotice = async () => {
       try {
-        const seen = await AsyncStorage.getItem('chromacode_seen_v2_0_50');
+        const seen = await AsyncStorage.getItem(versionNoticeKey);
         if (!seen) {
           setWhatsNewVisible(true);
         }
@@ -266,7 +267,7 @@ export default function HomeScreen() {
   const handleDismissWhatsNew = async () => {
     setWhatsNewVisible(false);
     try {
-      await AsyncStorage.setItem('chromacode_seen_v2_0_50', 'true');
+      await AsyncStorage.setItem(versionNoticeKey, 'true');
     } catch (e) {
       console.error('Failed to save version notice key', e);
     }
@@ -571,21 +572,27 @@ export default function HomeScreen() {
                 <Ionicons name="sparkles" size={28} color={colors.tint} />
               </View>
               <ThemedText style={[styles.modalTitle, { color: colors.text }]}>
-                What's New in v2.0.50 🚀
+                What's New in v{APP_VERSION}
               </ThemedText>
               <ThemedText style={[styles.modalSub, { color: colors.icon }]}>
-                Check out the latest features and visual improvements:
+                Security, media and reliability updates:
               </ThemedText>
 
               <View style={styles.modalList}>
                 <ThemedText style={[styles.modalBullet, { color: colors.text }]}>
-                  🔍 <ThemedText style={{ fontWeight: 'bold' }}>Enlarged Search & Emoji Boxes:</ThemedText> Spacious inputs and larger emoji reaction boxes.
+                  <ThemedText style={{ fontWeight: 'bold' }}>Encrypted messaging</ThemedText> — end-to-end before storage.
                 </ThemedText>
                 <ThemedText style={[styles.modalBullet, { color: colors.text }]}>
-                  🖼️ <ThemedText style={{ fontWeight: 'bold' }}>History Profile Images:</ThemedText> Recipient avatars now show custom user profile photos.
+                  <ThemedText style={{ fontWeight: 'bold' }}>Media uploads</ThemedText> — images, video, audio and documents via Cloudinary.
                 </ThemedText>
                 <ThemedText style={[styles.modalBullet, { color: colors.text }]}>
-                  🔒 <ThemedText style={{ fontWeight: 'bold' }}>Smart Notifications Privacy:</ThemedText> Suppresses self-delivery when logged in online.
+                  <ThemedText style={{ fontWeight: 'bold' }}>Profile banner</ThemedText> — upload a custom banner on your profile.
+                </ThemedText>
+                <ThemedText style={[styles.modalBullet, { color: colors.text }]}>
+                  <ThemedText style={{ fontWeight: 'bold' }}>Multi-device</ThemedText> — sign in on multiple devices at once.
+                </ThemedText>
+                <ThemedText style={[styles.modalBullet, { color: colors.text }]}>
+                  <ThemedText style={{ fontWeight: 'bold' }}>Socket hardening</ThemedText> — authenticated rooms and CORS lock-down.
                 </ThemedText>
               </View>
 

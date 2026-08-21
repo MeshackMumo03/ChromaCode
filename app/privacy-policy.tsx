@@ -1,13 +1,11 @@
-import React from 'react';
-import { StyleSheet, ScrollView, View, TouchableOpacity, Linking } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack, useRouter } from 'expo-router';
-import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
+import { APP_VERSION } from '@/constants/version';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
-import { APP_VERSION } from '@/constants/version';
+import { Stack, useRouter } from 'expo-router';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function PrivacyPolicyScreen() {
   const colorScheme = useColorScheme();
@@ -35,31 +33,34 @@ export default function PrivacyPolicyScreen() {
               ChromaCode Security & Privacy
             </ThemedText>
             <ThemedText style={[styles.versionSub, { color: colors.icon }]}>
-              Version {APP_VERSION} (Build v1-50)
+              Version {APP_VERSION} (Runtime 1.0.0)
             </ThemedText>
           </View>
         </View>
 
-        {/* What's New in v2.0.50 Section */}
+        {/* What's New in v{APP_VERSION} Section */}
         <View style={styles.section}>
           <ThemedText style={[styles.sectionTitle, { color: colors.text }]}>
-            🚀 What's New in Version 2.0.50
+            What's New in Version {APP_VERSION}
           </ThemedText>
           <View style={[styles.logBox, { backgroundColor: isDark ? '#1A1A26' : '#F8F9FA', borderColor: colors.icon + '20' }]}>
             <ThemedText style={[styles.logItem, { color: colors.text }]}>
-              • <ThemedText style={{ fontWeight: 'bold' }}>Enlarged Search & Emoji Boxes:</ThemedText> Textbox inputs on Home Tab enlarged for crystal clear typing visibility; emoji boxes and badges enlarged on all screens.
+              • <ThemedText style={{ fontWeight: 'bold' }}>Encrypted Messaging:</ThemedText> Messages are now encrypted end-to-end before storage and decrypted on the device.
             </ThemedText>
             <ThemedText style={[styles.logItem, { color: colors.text }]}>
-              • <ThemedText style={{ fontWeight: 'bold' }}>History Profile Images:</ThemedText> Recipient avatars in History Tab now display custom user profile pictures.
+              • <ThemedText style={{ fontWeight: 'bold' }}>Media Uploads:</ThemedText> Send images, videos, audio and documents securely via Cloudinary URLs instead of base64-in-MongoDB.
             </ThemedText>
             <ThemedText style={[styles.logItem, { color: colors.text }]}>
-              • <ThemedText style={{ fontWeight: 'bold' }}>Smart Notifications Privacy:</ThemedText> Self-delivered notification suppression when actively connected or using an account on-device.
+              • <ThemedText style={{ fontWeight: 'bold' }}>Profile Banner:</ThemedText> Upload a custom banner image to your profile.
             </ThemedText>
             <ThemedText style={[styles.logItem, { color: colors.text }]}>
-              • <ThemedText style={{ fontWeight: 'bold' }}>Custom Animated Toasts:</ThemedText> Replaced native popups with global non-blocking in-app toast banners across all flows.
+              • <ThemedText style={{ fontWeight: 'bold' }}>Multi-Device Presence:</ThemedText> One user can be signed in on multiple devices at once; self-notifications are suppressed while online.
             </ThemedText>
             <ThemedText style={[styles.logItem, { color: colors.text }]}>
-              • <ThemedText style={{ fontWeight: 'bold' }}>Swipe-to-Reply & Audio Player:</ThemedText> WhatsApp-style swipe reply gestures and audio playback controls.
+              • <ThemedText style={{ fontWeight: 'bold' }}>Socket Security:</ThemedText> Socket.io connections now require authentication and only allow joining rooms you are a member of.
+            </ThemedText>
+            <ThemedText style={[styles.logItem, { color: colors.text }]}>
+              • <ThemedText style={{ fontWeight: 'bold' }}>Bot Signals:</ThemedText> A dedicated bot user (botsignals) can receive and report signals from the Py-bot sidecar.
             </ThemedText>
           </View>
         </View>
