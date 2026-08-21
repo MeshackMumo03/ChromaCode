@@ -7,6 +7,7 @@ import 'react-native-reanimated';
 // Keep the splash screen visible while we initialize
 SplashScreen.preventAutoHideAsync();
 
+import { APP_VERSION } from '@/constants/version';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { CodesProvider } from '@/hooks/useCodes';
