@@ -1,18 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, TextInput, ScrollView, View, TouchableOpacity, Alert, RefreshControl, Pressable } from 'react-native';
-import { Image as ExpoImage } from 'expo-image';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ThemedView } from '@/components/themed-view';
-import { ThemedText } from '@/components/themed-text';
-import { useAuth } from '@/hooks/useAuth';
-import { useRouter, useNavigation } from 'expo-router';
 import { StyledButton } from '@/components/StyledButton';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { getBaseUrl, getImageUrl } from '@/constants/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { getBaseUrl, getImageUrl } from '@/constants/api';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
-import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
+import { Image as ExpoImage } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
+import { useNavigation, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const BASE_URL = getBaseUrl();
 
@@ -23,6 +23,7 @@ export default function ProfileScreen() {
   const [username, setUsername] = useState(user?.username || '');
   const [email, setEmail] = useState(user?.email || '');
   const [profilePicture, setProfilePicture] = useState(user?.profilePicture || '');
+  const [banner, setBanner] = useState(user?.banner || '');
   const [friendRequests, setFriendRequests] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const colorScheme = useColorScheme();
@@ -52,6 +53,7 @@ export default function ProfileScreen() {
       setUsername(user.username);
       setEmail(user.email);
       setProfilePicture(user.profilePicture);
+      setBanner(user.banner || '');
       fetchFriendRequests();
     }
   }, [user]);
@@ -69,7 +71,7 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleUpdateProfile = async (imageUri?: string) => {
+  const handleUpdateProfile = async (imageUri?: string, bannerUri?: string) => {
     if (!token) {
       showToast('Not authenticated.', 'error');
       return;
@@ -85,7 +87,8 @@ export default function ProfileScreen() {
         body: JSON.stringify({ 
           username, 
           email, 
-          profilePicture: imageUri || profilePicture 
+          profilePicture: imageUri || profilePicture,
+          banner: bannerUri !== undefined ? bannerUri : banner,
         }),
       });
 
@@ -133,6 +136,37 @@ export default function ProfileScreen() {
     }
   };
 
+  const uploadBanner = async (uri: string) => {
+    setRefreshing(true);
+    const formData = new FormData();
+    formData.append('image', {
+      uri,
+      type: 'image/jpeg',
+      name: 'banner.jpg',
+    } as any);
+
+    try {
+      const response = await fetch(`${BASE_URL}/users/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+      const data = await response.json();
+      if (data.imageUrl) {
+        setBanner(data.imageUrl);
+        handleUpdateProfile(undefined, data.imageUrl);
+      } else {
+        showToast(data.message || 'Could not upload banner.', 'error');
+      }
+    } catch (error) {
+      showToast('Could not upload banner to server.', 'error');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -149,6 +183,25 @@ export default function ProfileScreen() {
 
     if (!result.canceled) {
       uploadToBackend(result.assets[0].uri);
+    }
+  };
+
+  const pickBanner = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      showToast('Camera roll permissions required.', 'error');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [3, 1],
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      uploadBanner(result.assets[0].uri);
     }
   };
 
@@ -230,7 +283,21 @@ export default function ProfileScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <View style={styles.headerContainer}>
-          <View style={[styles.headerBackground, { backgroundColor: colors.tint + '80' }]} />
+          <Pressable onPress={pickBanner} style={styles.bannerContainer}>
+            {banner ? (
+              <ExpoImage
+                source={{ uri: getImageUrl(banner) }}
+                style={styles.bannerImage}
+                contentFit="cover"
+                transition={300}
+              />
+            ) : (
+              <View style={[styles.bannerPlaceholder, { backgroundColor: colors.tint + '80' }]} />
+            )}
+            <View style={[styles.bannerEdit, { backgroundColor: colors.tint, borderColor: colors.background }]}>
+              <Ionicons name="camera" size={14} color="#FFF" />
+            </View>
+          </Pressable>
           
           <View style={styles.profileSection}>
             <Pressable onPress={pickImage} style={[styles.profilePictureContainer, { borderColor: colors.background }]}>
@@ -283,28 +350,48 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.contentContainer}>
-          {friendRequests.length > 0 && (
-            <View style={[styles.card, { backgroundColor: cardBg }]}>
-              <ThemedText style={styles.sectionTitle}>Friend Requests ({friendRequests.length})</ThemedText>
-              {friendRequests.map((req) => (
-                <View key={req._id} style={styles.requestItem}>
-                  <ExpoImage 
-                    source={{ uri: getImageUrl(req.from?.profilePicture) }} 
-                    style={styles.requestAvatar} 
+          <View style={[styles.card, { backgroundColor: cardBg }]}>
+            <ThemedText style={styles.sectionTitle}>
+              Friend Requests {friendRequests.length > 0 ? `(${friendRequests.length})` : ''}
+            </ThemedText>
+            {friendRequests.length > 0 ? (
+              friendRequests.map((req) => (
+                <View key={req._id} style={styles.requestCard}>
+                  <ExpoImage
+                    source={{ uri: getImageUrl(req.from?.profilePicture) }}
+                    style={styles.requestAvatar}
                   />
-                  <ThemedText style={styles.requestName}>{req.from.username}</ThemedText>
+                  <View style={styles.requestInfo}>
+                    <ThemedText style={styles.requestName}>{req.from.username}</ThemedText>
+                    <ThemedText style={[styles.requestSubtext, { color: colors.icon }]} numberOfLines={1}>
+                      Wants to be your friend
+                    </ThemedText>
+                  </View>
                   <View style={styles.requestActions}>
-                    <Pressable onPress={() => handleRequestAction(req._id, 'accept')} style={styles.acceptBtn}>
-                      <Ionicons name="checkmark" size={20} color="#fff" />
-                    </Pressable>
-                    <Pressable onPress={() => handleRequestAction(req._id, 'decline')} style={styles.declineBtn}>
-                      <Ionicons name="close" size={20} color="#fff" />
-                    </Pressable>
+                    <TouchableOpacity
+                      onPress={() => handleRequestAction(req._id, 'accept')}
+                      style={[styles.actionButton, styles.acceptButton]}
+                    >
+                      <ThemedText style={styles.actionButtonText}>Accept</ThemedText>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleRequestAction(req._id, 'decline')}
+                      style={[styles.actionButton, styles.declineButton]}
+                    >
+                      <ThemedText style={styles.actionButtonText}>Decline</ThemedText>
+                    </TouchableOpacity>
                   </View>
                 </View>
-              ))}
-            </View>
-          )}
+              ))
+            ) : (
+              <View style={styles.emptyRequests}>
+                <Ionicons name="people-outline" size={32} color={colors.icon} />
+                <ThemedText style={[styles.emptyText, { color: colors.icon }]}>
+                  No friend requests right now
+                </ThemedText>
+              </View>
+            )}
+          </View>
 
           <View style={[styles.card, { backgroundColor: cardBg }]}>
             <ThemedText style={styles.sectionTitle}>Edit Profile</ThemedText>
@@ -344,8 +431,16 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   headerContainer: { alignItems: 'center', paddingBottom: 20 },
-  headerBackground: { width: '100%', height: 140, position: 'absolute', top: 0 },
-  profileSection: { alignItems: 'center', marginTop: 70, width: '100%' },
+  bannerContainer: { width: '100%', height: 160, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  bannerImage: { width: '100%', height: '100%' },
+  bannerPlaceholder: { width: '100%', height: '100%' },
+  bannerEdit: {
+    position: 'absolute', bottom: 12, right: 12,
+    width: 32, height: 32, borderRadius: 16,
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 3,
+  },
+  profileSection: { alignItems: 'center', marginTop: -40, width: '100%' },
   profilePictureContainer: {
     width: 120, height: 120, borderRadius: 60,
     justifyContent: 'center', alignItems: 'center',
@@ -382,12 +477,22 @@ const styles = StyleSheet.create({
   inputIcon: { marginRight: 10 },
   input: { flex: 1, paddingVertical: 14, fontSize: 16 },
   updateButton: { width: '100%' },
-  requestItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  requestAvatar: { width: 40, height: 40, borderRadius: 20, marginRight: 12 },
-  requestName: { flex: 1, fontSize: 15, fontWeight: '600' },
+  requestCard: {
+    flexDirection: 'row', alignItems: 'center',
+    padding: 12, borderRadius: 12,
+    marginBottom: 10,
+  },
+  requestAvatar: { width: 52, height: 52, borderRadius: 26, marginRight: 14 },
+  requestInfo: { flex: 1, justifyContent: 'center' },
+  requestName: { fontSize: 16, fontWeight: '700' },
+  requestSubtext: { fontSize: 13, marginTop: 2 },
   requestActions: { flexDirection: 'row', gap: 8 },
-  acceptBtn: { backgroundColor: '#34C759', width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
-  declineBtn: { backgroundColor: '#FF3B30', width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
+  actionButton: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  actionButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  acceptButton: { backgroundColor: '#34C759' },
+  declineButton: { backgroundColor: '#FF3B30' },
+  emptyRequests: { alignItems: 'center', paddingVertical: 24, gap: 10 },
+  emptyText: { fontSize: 14, textAlign: 'center', marginTop: 8 },
   dangerBtn: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12, gap: 10 },
   logoutText: { color: '#FF3B30', fontSize: 16, fontWeight: '600' },
   deleteText: { color: '#FF3B30', fontSize: 16, fontWeight: '600', opacity: 0.9 },

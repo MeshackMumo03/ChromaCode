@@ -36,6 +36,7 @@ const MessageSchema = new mongoose.Schema({
   },
   mediaData: {
     type: Buffer,
+    select: false,
   },
   fileName: {
     type: String,

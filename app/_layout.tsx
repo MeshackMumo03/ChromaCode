@@ -1,20 +1,20 @@
-import { Stack, useRouter, ThemeProvider, DarkTheme, DefaultTheme } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
-import { useEffect } from 'react';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
+import 'react-native-reanimated';
 
 // Keep the splash screen visible while we initialize
 SplashScreen.preventAutoHideAsync();
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
-import { HistoryProvider } from '@/hooks/useHistory';
-import { SettingsProvider } from '@/hooks/useSettings';
-import { CodesProvider } from '@/hooks/useCodes'; 
-import { useNotifications } from '@/hooks/useNotifications';
-import { SocketProvider } from '@/hooks/useSocket';
+import { CodesProvider } from '@/hooks/useCodes';
 import { ConversationsProvider } from '@/hooks/useConversations';
+import { HistoryProvider } from '@/hooks/useHistory';
+import { useNotifications } from '@/hooks/useNotifications';
+import { SettingsProvider } from '@/hooks/useSettings';
+import { SocketProvider } from '@/hooks/useSocket';
 import { ToastProvider, useToast } from '@/hooks/useToast';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -36,7 +36,6 @@ function RootLayoutNav() {
     const checkUpdateToast = async () => {
       try {
         const lastVersion = await AsyncStorage.getItem('chromacode_last_toast_version');
-        const APP_VERSION = '2.71'; // Current version
         
         if (lastVersion !== APP_VERSION) {
           showToast(

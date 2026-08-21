@@ -16,8 +16,7 @@ const AUTH_TAG_LENGTH = 16;
 function encrypt(text) {
   if (!text) return text;
   if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== 64) {
-    console.warn('MESSAGE_ENCRYPTION_KEY is missing or invalid. Skipping encryption.');
-    return text; // Fallback to plaintext if misconfigured
+    throw new Error('MESSAGE_ENCRYPTION_KEY is missing or invalid. Cannot encrypt message.');
   }
 
   try {
@@ -33,8 +32,7 @@ function encrypt(text) {
     // Combine IV, AuthTag, and Ciphertext for storage
     return `${iv.toString('hex')}:${authTag}:${encrypted}`;
   } catch (error) {
-    console.error('Encryption error:', error);
-    return text;
+    throw new Error(`Encryption failed: ${error.message}`);
   }
 }
 
@@ -45,7 +43,7 @@ function encrypt(text) {
  */
 function decrypt(encryptedText) {
   if (!encryptedText) return encryptedText;
-  
+
   // If the text doesn't match the "iv:authTag:ciphertext" structure, it's already plaintext
   const parts = encryptedText.split(':');
   if (parts.length !== 3) {
@@ -53,8 +51,7 @@ function decrypt(encryptedText) {
   }
 
   if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== 64) {
-    console.warn('MESSAGE_ENCRYPTION_KEY is missing or invalid. Cannot decrypt.');
-    return encryptedText; 
+    throw new Error('MESSAGE_ENCRYPTION_KEY is missing or invalid. Cannot decrypt message.');
   }
 
   try {
@@ -71,8 +68,6 @@ function decrypt(encryptedText) {
 
     return decrypted;
   } catch (error) {
-    console.error('Decryption error:', error);
-    // Return original encrypted string if decryption fails (or a placeholder)
     return '[Decryption Error]';
   }
 }

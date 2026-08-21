@@ -1,13 +1,14 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import * as SecureStore from 'expo-secure-store'; // For storing JWT securely
-import { useRouter } from 'expo-router'; // Import useRouter
 import { getBaseUrl } from '@/constants/api'; // Import getBaseUrl from centralized file
+import { useRouter } from 'expo-router'; // Import useRouter
+import * as SecureStore from 'expo-secure-store'; // For storing JWT securely
+import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
 export interface User {
   _id: string;
   username: string;
   email: string;
   profilePicture: string;
+  banner?: string;
   friends: string[];
   pushToken?: string;
   blockedUsers?: string[];
@@ -23,7 +24,7 @@ interface AuthContextType {
   resendVerificationEmail: (email: string) => Promise<{ success: boolean; message?: string }>;
   forgotPassword: (email: string) => Promise<boolean>;
   resetPassword: (email: string, code: string, newPassword: string) => Promise<boolean>;
-  googleLogin: (userInfo: any) => Promise<boolean>;
+  googleLogin: (idToken: string) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
   isInitializing: boolean;
@@ -106,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           username: data.username,
           email: data.email,
           profilePicture: data.profilePicture,
+          banner: data.banner,
           friends: data.friends,
           pushToken: data.pushToken
         });
@@ -251,13 +253,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const googleLogin = async (userInfo: any): Promise<boolean> => {
+  const googleLogin = async (idToken: string): Promise<boolean> => {
     try {
       setIsLoading(true);
       const response = await fetch(`${BASE_URL}/users/google-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userInfo),
+        body: JSON.stringify({ idToken }),
       });
 
       const data = await response.json();

@@ -1,3 +1,4 @@
 // Single source of truth for the application version.
-// Import this constant anywhere version display is needed.
-export const APP_VERSION = '2.71';
+// The actual value is read from package.json so it stays in one place.
+import { version } from '../package.json';
+export const APP_VERSION = version;

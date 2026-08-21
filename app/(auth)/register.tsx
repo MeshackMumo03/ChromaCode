@@ -4,21 +4,21 @@ import { ThemedView } from "@/components/themed-view";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAuth } from "@/hooks/useAuth";
-import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 import { useToast } from "@/hooks/useToast";
-import React, { useEffect, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import Constants from 'expo-constants';
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import {
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Constants from 'expo-constants';
 
 // Only import GoogleSignin if not in Expo Go to avoid crashes
 let GoogleSignin: any = null;
@@ -55,7 +55,6 @@ export default function RegisterScreen() {
       try {
         GoogleSignin.configure({
           webClientId,
-          offlineAccess: true,
         });
       } catch (e) {
         console.warn('GoogleSignin.configure failed:', e);
@@ -111,23 +110,30 @@ export default function RegisterScreen() {
 
       const response = await GoogleSignin.signIn();
 
-      // Handle both v13 (response.data.user) and older versions (response.user)
-      const user = response.data ? response.data.user : (response as any).user;
+      // Handle both v13 (response.data) and older versions (response)
+      const signInData = response.data ? response.data : (response as any);
+      const user = signInData.user;
+      let idToken = signInData.idToken;
 
-      if (!user) {
-        throw new Error("No user data returned from Google");
+      if (!idToken) {
+        const tokens = await GoogleSignin.getTokens();
+        idToken = tokens.idToken;
       }
 
-      const success = await googleLogin({
-        email: user.email,
-        username: user.name,
-        profilePicture: user.photo,
-      });
+      if (!idToken) {
+        throw new Error('Could not retrieve Google ID token');
+      }
+
+      if (!user) {
+        throw new Error('No user data returned from Google');
+      }
+
+      const success = await googleLogin(idToken);
 
       if (success) {
-        showToast("Logged in with Google!", "success");
+        showToast('Logged in with Google!', 'success');
       } else {
-        showToast("Failed to authenticate with Google", "error");
+        showToast('Failed to authenticate with Google', 'error');
       }
     } catch (error: any) {
       if (statusCodes && error.code === statusCodes.SIGN_IN_CANCELLED) {
@@ -135,8 +141,8 @@ export default function RegisterScreen() {
       } else if (statusCodes && error.code === statusCodes.IN_PROGRESS) {
         // operation in progress
       } else {
-        console.error("Google Sign-In Error:", error);
-        showToast("Google Sign-In failed", "error");
+        console.error('Google Sign-In Error:', error);
+        showToast('Google Sign-In failed', 'error');
       }
     }
   };

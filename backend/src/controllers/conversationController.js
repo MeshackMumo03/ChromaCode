@@ -37,7 +37,7 @@ const populatePresetCodeObj = (msgObj) => {
 // @route   POST /api/conversations
 // @access  Private
 const startConversation = asyncHandler(async (req, res) => {
-  const { recipientId, text, codeId, replyTo, mediaType, mediaUrl, mediaData, fileName, fileSize, fileMimeType } = req.body;
+  const { recipientId, text, codeId, replyTo, mediaType, mediaUrl, fileName, fileSize, fileMimeType } = req.body;
   const senderId = req.user._id;
 
   if (!recipientId && !req.body.participants) {
@@ -66,13 +66,13 @@ const startConversation = asyncHandler(async (req, res) => {
 
   // If conversation already existed and no message/code content was provided,
   // just navigate to it without sending a redundant "Hi!" message.
-  if (conversationAlreadyExists && !text && !codeId && !mediaUrl && !mediaData) {
+  if (conversationAlreadyExists && !text && !codeId && !mediaUrl) {
     await conversation.populate('participants', 'username profilePicture');
     return res.status(200).json({ conversation, message: null });
   }
 
   // Require message content only if we actually intend to send a message
-  if (!text && !mediaUrl && !mediaData && !codeId) {
+  if (!text && !mediaUrl && !codeId) {
     res.status(400);
     throw new Error('Message content is required');
   }
@@ -80,12 +80,6 @@ const startConversation = asyncHandler(async (req, res) => {
   const isPreset = codeId && typeof codeId === 'string' && codeId.startsWith('preset-');
   const validCodeId = !isPreset && codeId && mongoose.Types.ObjectId.isValid(codeId) ? codeId : null;
   const validReplyTo = replyTo && mongoose.Types.ObjectId.isValid(replyTo) ? replyTo : null;
-
-  // Handle media data
-  let bufferData = null;
-  if (mediaData) {
-    bufferData = Buffer.from(mediaData, 'base64');
-  }
 
   const message = new Message({
     conversationId: conversation._id,
@@ -96,16 +90,11 @@ const startConversation = asyncHandler(async (req, res) => {
     replyTo: validReplyTo,
     mediaType: mediaType || 'none',
     mediaUrl: mediaUrl || '',
-    mediaData: bufferData,
     fileName: fileName || '',
     fileSize: fileSize || 0,
     fileMimeType: fileMimeType || '',
     readBy: [senderId],
   });
-
-  if (message.mediaData && !mediaUrl) {
-    message.mediaUrl = `/api/conversations/messages/${message._id}/media`;
-  }
 
   await message.save();
 
@@ -128,9 +117,8 @@ const startConversation = asyncHandler(async (req, res) => {
   conversation.updatedAt = new Date();
   await conversation.save();
 
-  // For real-time response, strip binary data and inject preset code info
+  // For real-time response, inject preset code info
   let socketMessage = message.toObject();
-  delete socketMessage.mediaData;
   socketMessage = populatePresetCodeObj(socketMessage);
   
   // Decrypt text for the response
@@ -215,19 +203,24 @@ const getConversations = asyncHandler(async (req, res) => {
     .sort({ updatedAt: -1 })
     .lean(); // Return plain JS objects for speed
 
-  // Add unread count for each conversation
-  const conversationsWithUnread = await Promise.all(conversations.map(async (conv) => {
-    const unreadCount = await Message.countDocuments({
-      conversationId: conv._id,
-      readBy: { $ne: userId }
-    });
-    
-    conv.unreadCount = unreadCount;
+  // Aggregate unread counts for all conversations in a single query
+  const userObjId = new mongoose.Types.ObjectId(userId);
+  const conversationIds = conversations.map(c => c._id);
+  const unreadAgg = conversationIds.length
+    ? await Message.aggregate([
+        { $match: { conversationId: { $in: conversationIds }, readBy: { $ne: userObjId } } },
+        { $group: { _id: '$conversationId', count: { $sum: 1 } } }
+      ])
+    : [];
+  const unreadMap = new Map(unreadAgg.map(u => [u._id.toString(), u.count]));
+
+  const conversationsWithUnread = conversations.map(conv => {
+    conv.unreadCount = unreadMap.get(conv._id.toString()) || 0;
     if (conv.lastMessage && conv.lastMessage.text) {
       conv.lastMessage.text = decrypt(conv.lastMessage.text);
     }
     return conv;
-  }));
+  });
 
   res.json(conversationsWithUnread);
 });
@@ -292,11 +285,11 @@ const getConversation = asyncHandler(async (req, res) => {
 // @route   POST /api/conversations/:id/messages
 // @access  Private
 const sendMessage = asyncHandler(async (req, res) => {
-  const { text, codeId, replyTo, mediaType, mediaUrl, mediaData, fileName, fileSize, fileMimeType } = req.body;
+  const { text, codeId, replyTo, mediaType, mediaUrl, fileName, fileSize, fileMimeType } = req.body;
   const senderId = req.user._id;
   const conversationId = req.params.id;
 
-  if (!text && !mediaUrl && !mediaData) {
+  if (!text && !mediaUrl) {
     res.status(400);
     throw new Error('Message content is required');
   }
@@ -325,12 +318,6 @@ const sendMessage = asyncHandler(async (req, res) => {
   const validCodeId = !isPreset && codeId && mongoose.Types.ObjectId.isValid(codeId) ? codeId : null;
   const validReplyTo = replyTo && mongoose.Types.ObjectId.isValid(replyTo) ? replyTo : null;
 
-  // If mediaData is provided in Base64 (from frontend), convert to Buffer
-  let bufferData = null;
-  if (mediaData) {
-    bufferData = Buffer.from(mediaData, 'base64');
-  }
-
   const message = new Message({
     conversationId,
     sender: senderId,
@@ -340,16 +327,11 @@ const sendMessage = asyncHandler(async (req, res) => {
     replyTo: validReplyTo,
     mediaType: mediaType || 'none',
     mediaUrl: mediaUrl || '',
-    mediaData: bufferData,
     fileName: fileName || '',
     fileSize: fileSize || 0,
     fileMimeType: fileMimeType || '',
     readBy: [senderId],
   });
-
-  if (message.mediaData && !mediaUrl) {
-    message.mediaUrl = `/api/conversations/messages/${message._id}/media`;
-  }
 
   await message.save();
 
@@ -367,9 +349,8 @@ const sendMessage = asyncHandler(async (req, res) => {
     }
   ]);
 
-  // For real-time response, strip binary data and inject preset code info
+  // For real-time response, inject preset code info
   let socketMessage = message.toObject();
-  delete socketMessage.mediaData;
   socketMessage = populatePresetCodeObj(socketMessage);
   
   if (socketMessage.text) socketMessage.text = decrypt(socketMessage.text);
@@ -422,14 +403,11 @@ const sendMessage = asyncHandler(async (req, res) => {
 // @route   POST /api/conversations/upload
 // @access  Private
 const uploadMessageMedia = asyncHandler(async (req, res) => {
-  console.log('--- uploadMessageMedia start ---');
   if (!req.file) {
-    console.log('uploadMessageMedia: No file provided');
     res.status(400);
     throw new Error('Please upload a file');
   }
 
-  console.log(`uploadMessageMedia: Received file ${req.file.originalname} (${req.file.size} bytes)`);
 
   const responseData = { 
     // multer-storage-cloudinary puts the permanent hosted URL on req.file.path
@@ -439,7 +417,6 @@ const uploadMessageMedia = asyncHandler(async (req, res) => {
     fileMimeType: req.file.mimetype,
   };
 
-  console.log('uploadMessageMedia: Sending response:', responseData);
   res.json(responseData);
 });
 
@@ -447,7 +424,7 @@ const uploadMessageMedia = asyncHandler(async (req, res) => {
 // @route   GET /api/conversations/messages/:id/media
 // @access  Private
 const getMessageMedia = asyncHandler(async (req, res) => {
-  const message = await Message.findById(req.params.id);
+  const message = await Message.findById(req.params.id).select('+mediaData fileMimeType conversationId');
 
   if (!message || !message.mediaData) {
     res.status(404);
@@ -484,7 +461,6 @@ const propagateCode = async (codeId, recipientId) => {
       // If no DB record exists for this preset, we don't need to propagate 
       // because presets are already in every user's library by default.
       if (!originalCode) {
-        console.log(`Preset code ${preset.name} is already available to all users.`);
         return;
       }
     } else {
@@ -499,7 +475,6 @@ const propagateCode = async (codeId, recipientId) => {
     
     const isAlreadyShared = originalCode.sharedWith.some(id => id.toString() === recipientId.toString());
     if (isAlreadyShared) {
-      console.log(`ℹ️ Code ${originalCode.name} already shared with ${recipientId}`);
       return;
     }
 
@@ -507,7 +482,6 @@ const propagateCode = async (codeId, recipientId) => {
     originalCode.sharedWith.push(recipientId);
     await originalCode.save();
     
-    console.log(`✅ Code ${originalCode.name} shared with user ${recipientId}`);
   } catch (error) {
     console.error('❌ Error sharing code:', error);
   }
@@ -518,19 +492,16 @@ const propagateCode = async (codeId, recipientId) => {
 // @access  Private
 const updateGroupChat = asyncHandler(async (req, res) => {
   const { name, participants, groupImage } = req.body;
-  console.log(`updateGroupChat: id=${req.params.id}, name=${name}, hasImage=${!!groupImage}`);
   
   const conversation = await Conversation.findById(req.params.id);
 
   if (!conversation || !conversation.isGroup) {
-    console.log('updateGroupChat: Group not found');
     res.status(404);
     throw new Error('Group chat not found');
   }
 
   // Only admin can update
   if (conversation.groupAdmin.toString() !== req.user._id.toString()) {
-    console.log(`updateGroupChat: User ${req.user._id} is not admin ${conversation.groupAdmin}`);
     res.status(403);
     throw new Error('Only the group admin can update settings');
   }
@@ -545,7 +516,6 @@ const updateGroupChat = asyncHandler(async (req, res) => {
   await conversation.save();
   const updated = await Conversation.findById(conversation._id).populate('participants', 'username profilePicture');
   
-  console.log('updateGroupChat: Success');
   res.json(updated);
 });
 
@@ -553,7 +523,6 @@ const updateGroupChat = asyncHandler(async (req, res) => {
 // @route   DELETE /api/conversations/:id/leave
 // @access  Private
 const leaveGroupChat = asyncHandler(async (req, res) => {
-  console.log(`leaveGroupChat: id=${req.params.id}, user=${req.user._id}`);
   const conversation = await Conversation.findById(req.params.id);
 
   if (!conversation || !conversation.isGroup) {
@@ -576,12 +545,10 @@ const leaveGroupChat = asyncHandler(async (req, res) => {
   // If no one is left, delete the group
   if (conversation.participants.length === 0) {
     await Conversation.findByIdAndDelete(req.params.id);
-    console.log('leaveGroupChat: Group dissolved');
     return res.json({ message: 'Group dissolved' });
   }
 
   await conversation.save();
-  console.log('leaveGroupChat: Success');
   res.json({ message: 'Successfully left the group' });
 });
 
@@ -589,7 +556,6 @@ const leaveGroupChat = asyncHandler(async (req, res) => {
 // @route   DELETE /api/conversations/:id
 // @access  Private
 const deleteGroupChat = asyncHandler(async (req, res) => {
-  console.log(`deleteGroupChat: id=${req.params.id}, user=${req.user._id}`);
   const conversation = await Conversation.findById(req.params.id);
 
   if (!conversation || !conversation.isGroup) {
@@ -598,7 +564,6 @@ const deleteGroupChat = asyncHandler(async (req, res) => {
   }
 
   if (conversation.groupAdmin.toString() !== req.user._id.toString()) {
-    console.log(`deleteGroupChat: User ${req.user._id} is not admin ${conversation.groupAdmin}`);
     res.status(403);
     throw new Error('Only the admin can delete the group');
   }
@@ -606,7 +571,6 @@ const deleteGroupChat = asyncHandler(async (req, res) => {
   await Conversation.findByIdAndDelete(req.params.id);
   await Message.deleteMany({ conversationId: req.params.id });
 
-  console.log('deleteGroupChat: Success');
   res.json({ message: 'Group chat deleted successfully' });
 });
 

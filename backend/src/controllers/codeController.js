@@ -28,7 +28,6 @@ const getCodes = async (req, res) => {
     }));
 
     const allCodes = [...userCodes, ...formattedPresets];
-    console.log(`Returning ${allCodes.length} codes for user ${req.user.id} (${userCodes.length} custom/propagated)`);
 
     res.json(allCodes);
   } catch (error) {

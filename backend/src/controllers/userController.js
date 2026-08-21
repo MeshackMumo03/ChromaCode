@@ -47,7 +47,6 @@ const sendEmail = async ({ to, subject, html }) => {
       throw new Error(`Brevo API error (${response.status}): ${errorBody}`);
     }
 
-    console.log(`Email sent to ${to}`);
   } catch (error) {
     console.error('Error sending email:', error);
   }
@@ -305,6 +304,7 @@ const resetPassword = asyncHandler(async (req, res) => {
     username: user.username,
     email: user.email,
     profilePicture: user.profilePicture,
+    banner: user.banner,
     friends: user.friends,
     pushToken: user.pushToken,
     token: generateToken(user._id),
@@ -316,37 +316,82 @@ const resetPassword = asyncHandler(async (req, res) => {
 // @route   POST /api/users/google-login
 // @access  Public
 const googleLogin = asyncHandler(async (req, res) => {
-  const { email, username, profilePicture } = req.body;
+  const { idToken } = req.body;
 
-  let user = await User.findOne({ email });
-
-  if (user) {
-    // Existing user - if they log in with Google, we trust the email is verified
-    user.isVerified = true;
-    user.isGoogleUser = true;
-    user.verificationCode = undefined;
-    await user.save();
-  } else {
-    // Create new Google user (verified by default)
-    user = await User.create({
-      username,
-      email,
-      password: await bcrypt.hash(Math.random().toString(36), 10), // Random password
-      profilePicture: profilePicture || 'https://www.gravatar.com/avatar/?d=mp',
-      isVerified: true, 
-      isGoogleUser: true,
-    });
+  if (!idToken) {
+    res.status(400);
+    throw new Error('Google ID token is required');
   }
 
-  res.json({
-    _id: user.id,
-    username: user.username,
-    email: user.email,
-    profilePicture: user.profilePicture,
-    friends: user.friends,
-    pushToken: user.pushToken,
-    token: generateToken(user._id),
-  });
+  try {
+    const tokenRes = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`
+    );
+
+    if (!tokenRes.ok) {
+      res.status(401);
+      throw new Error('Invalid Google ID token');
+    }
+
+    const tokenData = await tokenRes.json();
+
+    if (
+      tokenData.iss !== 'https://accounts.google.com' &&
+      tokenData.iss !== 'accounts.google.com'
+    ) {
+      res.status(401);
+      throw new Error('Invalid token issuer');
+    }
+
+    const googleClientId =
+      process.env.GOOGLE_WEB_CLIENT_ID || process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+    if (googleClientId && tokenData.aud !== googleClientId) {
+      res.status(401);
+      throw new Error('Invalid token audience');
+    }
+
+    if (!tokenData.email_verified) {
+      res.status(400);
+      throw new Error('Google email is not verified');
+    }
+
+    const { email, name, picture } = tokenData;
+
+    let user = await User.findOne({ email });
+
+    if (user) {
+      // Existing user - if they log in with Google, we trust the email is verified
+      user.isVerified = true;
+      user.isGoogleUser = true;
+      user.verificationCode = undefined;
+      if (picture) user.profilePicture = picture;
+      await user.save();
+    } else {
+      // Create new Google user (verified by default)
+      user = await User.create({
+        username: name || email.split('@')[0],
+        email,
+        password: await bcrypt.hash(Math.random().toString(36), 10), // Random password
+        profilePicture: picture || 'https://www.gravatar.com/avatar/?d=mp',
+        isVerified: true,
+        isGoogleUser: true,
+      });
+    }
+
+    res.json({
+      _id: user.id,
+      username: user.username,
+      email: user.email,
+      profilePicture: user.profilePicture,
+      banner: user.banner,
+      friends: user.friends,
+      pushToken: user.pushToken,
+      token: generateToken(user._id),
+    });
+  } catch (error) {
+    if (res.statusCode === 200) res.status(500);
+    throw error;
+  }
 });
 
 // @desc    Authenticate a user
@@ -375,6 +420,7 @@ const loginUser = asyncHandler(async (req, res) => {
             username: user.username,
             email: user.email,
             profilePicture: user.profilePicture,
+            banner: user.banner,
             friends: user.friends,
             pushToken: user.pushToken,
             token: generateToken(user._id),
@@ -416,6 +462,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     user.username = req.body.username || user.username;
     user.email = req.body.email || user.email;
     user.profilePicture = req.body.profilePicture || user.profilePicture;
+    user.banner = req.body.banner !== undefined ? req.body.banner : user.banner;
 
     if (req.body.password) {
       const salt = await bcrypt.genSalt(10);
@@ -430,6 +477,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
         username: updatedUser.username,
         email: updatedUser.email,
         profilePicture: updatedUser.profilePicture,
+        banner: updatedUser.banner,
         friends: updatedUser.friends,
         pushToken: updatedUser.pushToken,
       },

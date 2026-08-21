@@ -1,9 +1,14 @@
 import Constants from "expo-constants";
 
+let _baseUrl: string | null = null;
+
 export const getBaseUrl = (): string => {
+  if (_baseUrl) return _baseUrl;
+
   // 1. Prioritize environment variable set during build/runtime
   if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL;
+    _baseUrl = process.env.EXPO_PUBLIC_API_URL;
+    return _baseUrl;
   }
 
   // 2. Fallback for Expo Go development (dynamic IP/tunnel)
@@ -13,16 +18,37 @@ export const getBaseUrl = (): string => {
     const hostname = parts[0];
     // This is the key for physical devices! 
     // It points to your computer's IP instead of 'localhost'
-    return `http://${hostname}:5000/api`;
+    _baseUrl = `http://${hostname}:5000/api`;
+    return _baseUrl;
   }
 
   // 3. Fallback for web or if no other URL is found
-  return `https://chromacode.onrender.com/api`;
+  _baseUrl = `https://chromacode.onrender.com/api`;
+  return _baseUrl;
+};
+
+const imageUrlCache = new Map<string, string>();
+const MAX_IMAGE_URL_CACHE = 500;
+
+const setImageUrlCache = (key: string, value: string) => {
+  if (imageUrlCache.size >= MAX_IMAGE_URL_CACHE) {
+    const firstKey = imageUrlCache.keys().next().value;
+    if (firstKey) imageUrlCache.delete(firstKey);
+  }
+  imageUrlCache.set(key, value);
 };
 
 export const getImageUrl = (url?: string): string => {
+  const raw = url ?? '';
+  const cacheKey = raw.trim();
+  if (imageUrlCache.has(cacheKey)) {
+    return imageUrlCache.get(cacheKey)!;
+  }
+
   if (!url || typeof url !== 'string' || !url.trim()) {
-    return 'https://www.gravatar.com/avatar/?d=mp';
+    const fallback = 'https://www.gravatar.com/avatar/?d=mp';
+    setImageUrlCache(cacheKey, fallback);
+    return fallback;
   }
 
   let cleaned = url.trim().replace(/\\/g, '/');
@@ -35,21 +61,23 @@ export const getImageUrl = (url?: string): string => {
     cleaned = cleaned.substring(lastHttpIndex);
   }
 
+  const baseUrl = getBaseUrl().replace('/api', '');
+  let result: string;
+
   // Handle server local uploads (/uploads/...)
   if (cleaned.includes('/uploads/')) {
     const relativePath = cleaned.substring(cleaned.indexOf('/uploads/'));
-    const baseUrl = getBaseUrl().replace('/api', '');
-    return `${baseUrl}${relativePath}`;
+    result = `${baseUrl}${relativePath}`;
+  } else if (cleaned.startsWith('http://') || cleaned.startsWith('https://')) {
+    // Return direct external URLs (Cloudinary, Gravatar, Google, etc.)
+    result = cleaned;
+  } else {
+    // Fallback relative URL
+    result = `${baseUrl}${cleaned.startsWith('/') ? '' : '/'}${cleaned}`;
   }
 
-  // Return direct external URLs (Cloudinary, Gravatar, Google, etc.)
-  if (cleaned.startsWith('http://') || cleaned.startsWith('https://')) {
-    return cleaned;
-  }
-
-  // Fallback relative URL
-  const baseUrl = getBaseUrl().replace('/api', '');
-  return `${baseUrl}${cleaned.startsWith('/') ? '' : '/'}${cleaned}`;
+  setImageUrlCache(cacheKey, result);
+  return result;
 };
 
 /**
@@ -87,31 +115,54 @@ export const setApiToken = (token: string | null) => {
   _authToken = token;
 };
 
+const parseResponse = async (res: Response) => {
+  const contentType = res.headers.get('content-type');
+  let data: any;
+
+  if (contentType?.includes('application/json')) {
+    data = await res.json();
+  } else {
+    const text = await res.text();
+    data = text;
+  }
+
+  if (!res.ok) {
+    const message = typeof data === 'object' && data?.message ? data.message : data;
+    throw new Error(message || `Request failed with status ${res.status}`);
+  }
+
+  return { data, status: res.status };
+};
+
+const buildHeaders = (body: any, extraHeaders?: Record<string, string>): Record<string, string> => {
+  const headers: Record<string, string> = {};
+  if (_authToken) headers.Authorization = `Bearer ${_authToken}`;
+  if (extraHeaders) Object.assign(headers, extraHeaders);
+
+  // Only set JSON content type for non-binary bodies
+  if (body && !(body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  return headers;
+};
+
+const request = async (method: string, path: string, body?: any, options?: { headers?: Record<string, string> }) => {
+  const res = await fetch(`${getBaseUrl()}${path}`, {
+    method,
+    headers: buildHeaders(body, options?.headers),
+    body: body ? (body instanceof FormData ? body : JSON.stringify(body)) : undefined,
+  });
+  return parseResponse(res);
+};
+
 export const api = {
-  get: async (path: string, options?: { headers?: Record<string, string> }) => {
-    const res = await fetch(`${getBaseUrl()}${path}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(_authToken ? { Authorization: `Bearer ${_authToken}` } : {}),
-        ...(options?.headers ?? {}),
-      },
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data?.message || 'Request failed');
-    return { data };
-  },
-  post: async (path: string, body?: any, options?: { headers?: Record<string, string> }) => {
-    const res = await fetch(`${getBaseUrl()}${path}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(_authToken ? { Authorization: `Bearer ${_authToken}` } : {}),
-        ...(options?.headers ?? {}),
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data?.message || 'Request failed');
-    return { data };
-  },
+  get: (path: string, options?: { headers?: Record<string, string> }) =>
+    request('GET', path, undefined, options),
+  post: (path: string, body?: any, options?: { headers?: Record<string, string> }) =>
+    request('POST', path, body, options),
+  put: (path: string, body?: any, options?: { headers?: Record<string, string> }) =>
+    request('PUT', path, body, options),
+  delete: (path: string, options?: { headers?: Record<string, string> }) =>
+    request('DELETE', path, undefined, options),
 };

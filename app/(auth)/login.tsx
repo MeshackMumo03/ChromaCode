@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, TextInput, Image, ScrollView, View, TouchableOpacity, Text } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { StyledButton } from '@/components/StyledButton';
-import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
-import { useAuth } from '@/hooks/useAuth';
-import { useRouter, Href } from 'expo-router';
+import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
+import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
+import { Href, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Only import GoogleSignin if not in Expo Go to avoid crashes
 let GoogleSignin: any = null;
@@ -50,7 +50,6 @@ export default function LoginScreen() {
       try {
         GoogleSignin.configure({
           webClientId,
-          offlineAccess: true,
         });
       } catch (e) {
         console.warn('GoogleSignin.configure failed:', e);
@@ -81,7 +80,7 @@ export default function LoginScreen() {
 
     try {
       await GoogleSignin.hasPlayServices();
-      
+
       // To ensure the user is prompted to select an account, we can sign out first
       // This is common in apps where users might want to switch accounts frequently
       try {
@@ -91,19 +90,26 @@ export default function LoginScreen() {
       }
 
       const response = await GoogleSignin.signIn();
-      
-      // Handle both v13 (response.data.user) and older versions (response.user)
-      const user = response.data ? response.data.user : (response as any).user;
-      
+
+      // Handle both v13 (response.data) and older versions (response)
+      const signInData = response.data ? response.data : (response as any);
+      const user = signInData.user;
+      let idToken = signInData.idToken;
+
+      if (!idToken) {
+        const tokens = await GoogleSignin.getTokens();
+        idToken = tokens.idToken;
+      }
+
+      if (!idToken) {
+        throw new Error('Could not retrieve Google ID token');
+      }
+
       if (!user) {
         throw new Error('No user data returned from Google');
       }
 
-      const success = await googleLogin({
-        email: user.email,
-        username: user.name,
-        profilePicture: user.photo,
-      });
+      const success = await googleLogin(idToken);
 
       if (success) {
         showToast('Logged in with Google!', 'success');
