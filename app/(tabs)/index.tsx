@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { getBaseUrl, getImageUrl } from '@/constants/api';
 import { Colors } from '@/constants/theme';
+import { APP_VERSION } from '@/constants/version';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
