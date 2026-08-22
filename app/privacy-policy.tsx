@@ -1,11 +1,11 @@
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
-import { APP_VERSION } from '@/constants/version';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+const APP_VERSION = '2.71';
 
 export default function PrivacyPolicyScreen() {
   const colorScheme = useColorScheme();

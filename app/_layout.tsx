@@ -1,13 +1,3 @@
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider, useRouter } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
-import 'react-native-reanimated';
-
-// Keep the splash screen visible while we initialize
-SplashScreen.preventAutoHideAsync();
-
-import { APP_VERSION } from '@/constants/version';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { CodesProvider } from '@/hooks/useCodes';
@@ -18,6 +8,16 @@ import { SettingsProvider } from '@/hooks/useSettings';
 import { SocketProvider } from '@/hooks/useSocket';
 import { ToastProvider, useToast } from '@/hooks/useToast';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider, useRouter } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
+import 'react-native-reanimated';
+
+// Keep the splash screen visible while we initialize
+SplashScreen.preventAutoHideAsync();
+
+const APP_VERSION = '2.71';
 
 export const unstable_settings = {
   anchor: '(tabs)',

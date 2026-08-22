@@ -1,7 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { getBaseUrl, getImageUrl } from '@/constants/api';
 import { Colors } from '@/constants/theme';
-import { APP_VERSION } from '@/constants/version';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
@@ -248,7 +247,7 @@ export default function HomeScreen() {
 
   const [whatsNewVisible, setWhatsNewVisible] = useState(false);
 
-  const versionNoticeKey = 'chromacode_seen_v' + APP_VERSION.replace(/\./g, '_');
+  const versionNoticeKey = 'chromacode_seen_v2_71';
 
   const handleDismissWhatsNew = async () => {
     setWhatsNewVisible(false);
@@ -558,7 +557,7 @@ export default function HomeScreen() {
                 <Ionicons name="sparkles" size={28} color={colors.tint} />
               </View>
               <ThemedText style={[styles.modalTitle, { color: colors.text }]}>
-                What's New in v{APP_VERSION}
+                What's New in v2.71
               </ThemedText>
               <ThemedText style={[styles.modalSub, { color: colors.icon }]}>
                 Security, media and reliability updates:

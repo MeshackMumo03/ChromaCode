@@ -1,20 +1,18 @@
-import React, { useState } from 'react';
-import { StyleSheet, ScrollView, TouchableOpacity, View, Switch, Alert, Platform, Modal, TextInput } from 'react-native';
-import { useRouter, Stack, Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Stack, useRouter } from 'expo-router';
+import { useState } from 'react';
+import { Alert, Modal, Platform, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View } from 'react-native';
 
-import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { getBaseUrl } from '@/constants/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useSettings, ThemePreference } from '@/hooks/useSettings';
 import { useAuth } from '@/hooks/useAuth';
+import { ThemePreference, useSettings } from '@/hooks/useSettings';
 import { useToast } from '@/hooks/useToast';
-import { getBaseUrl } from '@/constants/api';
-import { StyledButton } from '@/components/StyledButton';
-import { APP_VERSION } from '@/constants/version';
+const APP_VERSION = '2.71';
 
 const BASE_URL = getBaseUrl();
 
