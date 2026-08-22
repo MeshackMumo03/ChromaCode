@@ -1,4 +1,3 @@
-// Single source of truth for the application version.
-// The actual value is read from package.json so it stays in one place.
-import { version } from '../package.json';
-export const APP_VERSION = version;
+// Single source of truth for the in-app update/version display.
+// This value is independent of package.json so it is always bundled.
+export const APP_VERSION = '2.71';
