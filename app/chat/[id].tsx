@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AudioModule, useAudioPlayer, useAudioRecorder, RecordingPresets } from "expo-audio";
 import * as Haptics from "expo-haptics";
+import * as FileSystem from "expo-file-system";
 
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
@@ -1130,6 +1131,36 @@ export default function ChatScreen() {
     }
   };
 
+  const getMimeTypeFromName = (name: string) => {
+    const ext = name.split('.').pop()?.toLowerCase();
+    switch (ext) {
+      case 'png': return 'image/png';
+      case 'gif': return 'image/gif';
+      case 'webp': return 'image/webp';
+      case 'heic': return 'image/heic';
+      case 'mp4': return 'video/mp4';
+      case 'mov': return 'video/quicktime';
+      case 'pdf': return 'application/pdf';
+      case 'doc': return 'application/msword';
+      case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case 'xls': return 'application/vnd.ms-excel';
+      case 'xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case 'ppt': return 'application/vnd.ms-powerpoint';
+      case 'pptx': return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+      case 'jpg':
+      case 'jpeg':
+      default: return 'image/jpeg';
+    }
+  };
+
+  const prepareFileAsset = async (uri: string, name: string, mimeType?: string) => {
+    const fileName = name || `file-${Date.now()}`;
+    const type = mimeType || getMimeTypeFromName(fileName);
+    const tempUri = `${FileSystem.cacheDirectory}${Date.now()}-${fileName}`;
+    await FileSystem.copyAsync({ from: uri, to: tempUri });
+    return { uri: tempUri, name: fileName, type };
+  };
+
   const handleSendMedia = async (mediaData: any, mediaType: string) => {
     if (!token || !id) return;
     try {
@@ -1177,12 +1208,17 @@ export default function ChatScreen() {
 
       if (!result.canceled) {
         const asset = result.assets[0];
-        const mediaData = await uploadFile(
-          asset.uri,
+        const fileName =
           asset.fileName ||
-            (asset.type === "video" ? "video.mp4" : "image.jpg"),
+          (asset.type === "video" ? "video.mp4" : "image.jpg");
+        const mimeType =
           asset.mimeType ||
-            (asset.type === "video" ? "video/mp4" : "image/jpeg"),
+          (asset.type === "video" ? "video/mp4" : "image/jpeg");
+        const prepared = await prepareFileAsset(asset.uri, fileName, mimeType);
+        const mediaData = await uploadFile(
+          prepared.uri,
+          prepared.name,
+          prepared.type,
         );
         if (mediaData) {
           let type = "image";
@@ -1206,10 +1242,15 @@ export default function ChatScreen() {
       const result = await DocumentPicker.getDocumentAsync({ type: "*/*" });
       if (!result.canceled) {
         const asset = result.assets[0];
-        const mediaData = await uploadFile(
+        const prepared = await prepareFileAsset(
           asset.uri,
           asset.name,
-          asset.mimeType || "application/octet-stream",
+          asset.mimeType,
+        );
+        const mediaData = await uploadFile(
+          prepared.uri,
+          prepared.name,
+          prepared.type,
         );
         if (mediaData) {
           handleSendMedia(mediaData, "document");

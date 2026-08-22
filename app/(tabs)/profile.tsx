@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/useToast';
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
@@ -105,13 +106,34 @@ export default function ProfileScreen() {
     }
   };
 
-  const uploadToBackend = async (uri: string) => {
+  const getMimeTypeFromName = (name: string) => {
+    const ext = name.split('.').pop()?.toLowerCase();
+    switch (ext) {
+      case 'png': return 'image/png';
+      case 'gif': return 'image/gif';
+      case 'webp': return 'image/webp';
+      case 'heic': return 'image/heic';
+      case 'jpg':
+      case 'jpeg':
+      default: return 'image/jpeg';
+    }
+  };
+
+  const prepareImageAsset = async (asset: ImagePicker.ImagePickerAsset) => {
+    const fileName = asset.fileName || `image-${Date.now()}.jpg`;
+    const mimeType = asset.mimeType || getMimeTypeFromName(fileName);
+    const tempUri = `${FileSystem.cacheDirectory}${Date.now()}-${fileName}`;
+    await FileSystem.copyAsync({ from: asset.uri, to: tempUri });
+    return { uri: tempUri, name: fileName, mimeType };
+  };
+
+  const uploadToBackend = async (uri: string, name: string, mimeType: string) => {
     setRefreshing(true);
     const formData = new FormData();
     formData.append('image', {
       uri,
-      type: 'image/jpeg',
-      name: 'avatar.jpg',
+      type: mimeType,
+      name,
     } as any);
 
     try {
@@ -136,13 +158,13 @@ export default function ProfileScreen() {
     }
   };
 
-  const uploadBanner = async (uri: string) => {
+  const uploadBanner = async (uri: string, name: string, mimeType: string) => {
     setRefreshing(true);
     const formData = new FormData();
     formData.append('image', {
       uri,
-      type: 'image/jpeg',
-      name: 'banner.jpg',
+      type: mimeType,
+      name,
     } as any);
 
     try {
@@ -182,7 +204,8 @@ export default function ProfileScreen() {
     });
 
     if (!result.canceled) {
-      uploadToBackend(result.assets[0].uri);
+      const asset = await prepareImageAsset(result.assets[0]);
+      uploadToBackend(asset.uri, asset.name, asset.mimeType);
     }
   };
 
@@ -201,7 +224,8 @@ export default function ProfileScreen() {
     });
 
     if (!result.canceled) {
-      uploadBanner(result.assets[0].uri);
+      const asset = await prepareImageAsset(result.assets[0]);
+      uploadBanner(asset.uri, asset.name, asset.mimeType);
     }
   };
 
