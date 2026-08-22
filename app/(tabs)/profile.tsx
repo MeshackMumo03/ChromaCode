@@ -122,7 +122,9 @@ export default function ProfileScreen() {
   const prepareImageAsset = async (asset: ImagePicker.ImagePickerAsset) => {
     const fileName = asset.fileName || `image-${Date.now()}.jpg`;
     const mimeType = asset.mimeType || getMimeTypeFromName(fileName);
-    const tempUri = `${FileSystem.cacheDirectory}${Date.now()}-${fileName}`;
+    const safeName = `${Date.now()}-${fileName}`.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const cacheDir = FileSystem.cacheDirectory.endsWith('/') ? FileSystem.cacheDirectory : `${FileSystem.cacheDirectory}/`;
+    const tempUri = `${cacheDir}${safeName}`;
     await FileSystem.copyAsync({ from: asset.uri, to: tempUri });
     return { uri: tempUri, name: fileName, mimeType };
   };
@@ -190,42 +192,52 @@ export default function ProfileScreen() {
   };
 
   const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      showToast('Camera roll permissions required.', 'error');
-      return;
-    }
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        showToast('Camera roll permissions required.', 'error');
+        return;
+      }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.5,
-    });
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+      });
 
-    if (!result.canceled) {
-      const asset = await prepareImageAsset(result.assets[0]);
-      uploadToBackend(asset.uri, asset.name, asset.mimeType);
+      if (!result.canceled) {
+        const asset = await prepareImageAsset(result.assets[0]);
+        uploadToBackend(asset.uri, asset.name, asset.mimeType);
+      }
+    } catch (error: any) {
+      console.error('pickImage error:', error);
+      showToast(error.message || 'Could not select image.', 'error');
     }
   };
 
   const pickBanner = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      showToast('Camera roll permissions required.', 'error');
-      return;
-    }
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        showToast('Camera roll permissions required.', 'error');
+        return;
+      }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [3, 1],
-      quality: 0.7,
-    });
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [3, 1],
+        quality: 0.7,
+      });
 
-    if (!result.canceled) {
-      const asset = await prepareImageAsset(result.assets[0]);
-      uploadBanner(asset.uri, asset.name, asset.mimeType);
+      if (!result.canceled) {
+        const asset = await prepareImageAsset(result.assets[0]);
+        uploadBanner(asset.uri, asset.name, asset.mimeType);
+      }
+    } catch (error: any) {
+      console.error('pickBanner error:', error);
+      showToast(error.message || 'Could not select banner.', 'error');
     }
   };
 

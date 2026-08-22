@@ -1156,7 +1156,9 @@ export default function ChatScreen() {
   const prepareFileAsset = async (uri: string, name: string, mimeType?: string) => {
     const fileName = name || `file-${Date.now()}`;
     const type = mimeType || getMimeTypeFromName(fileName);
-    const tempUri = `${FileSystem.cacheDirectory}${Date.now()}-${fileName}`;
+    const safeName = `${Date.now()}-${fileName}`.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const cacheDir = FileSystem.cacheDirectory.endsWith('/') ? FileSystem.cacheDirectory : `${FileSystem.cacheDirectory}/`;
+    const tempUri = `${cacheDir}${safeName}`;
     await FileSystem.copyAsync({ from: uri, to: tempUri });
     return { uri: tempUri, name: fileName, type };
   };
@@ -1231,8 +1233,9 @@ export default function ChatScreen() {
           handleSendMedia(mediaData, type);
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error("pickImage error:", e);
+      showToast(e?.message || String(e) || "Could not select image or video", "error");
     }
   };
 
@@ -1256,8 +1259,9 @@ export default function ChatScreen() {
           handleSendMedia(mediaData, "document");
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Document picker error:", error);
+      showToast(error?.message || String(error) || "Could not select document", "error");
     }
   };
 
