@@ -41,7 +41,7 @@ function RootLayoutNav() {
         
         if (lastVersion !== APP_VERSION) {
           showToast(
-            `ChromaCode v${APP_VERSION} is here.\n• End-to-end encrypted messaging\n• Secure image / video / audio / document uploads\n• Profile banner upload\n• Multi-device presence & notifications\n• Bot signals and reliability fixes\n\nSee Settings > Privacy for full release notes.`,
+            `ChromaCode v${APP_VERSION} is here — open Settings > Privacy for what's new.`,
             'success',
             `What's New in v${APP_VERSION}`
           );

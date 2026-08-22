@@ -249,21 +249,6 @@ export default function HomeScreen() {
 
   const versionNoticeKey = 'chromacode_seen_v' + APP_VERSION.replace(/\./g, '_');
 
-  // Check if update notification should pop up
-  useEffect(() => {
-    const checkVersionNotice = async () => {
-      try {
-        const seen = await AsyncStorage.getItem(versionNoticeKey);
-        if (!seen) {
-          setWhatsNewVisible(true);
-        }
-      } catch (e) {
-        console.error('Failed to read version notice key', e);
-      }
-    };
-    checkVersionNotice();
-  }, []);
-
   const handleDismissWhatsNew = async () => {
     setWhatsNewVisible(false);
     try {
