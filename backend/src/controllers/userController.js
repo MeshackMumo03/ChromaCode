@@ -437,6 +437,8 @@ const updateUserProfile = asyncHandler(async (req, res) => {
         banner: updatedUser.banner,
         friends: updatedUser.friends,
         pushToken: updatedUser.pushToken,
+        isVerified: updatedUser.isVerified,
+        blockedUsers: updatedUser.blockedUsers,
       },
       token: generateToken(updatedUser._id),
     });

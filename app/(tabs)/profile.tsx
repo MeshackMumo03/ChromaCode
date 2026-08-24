@@ -98,7 +98,7 @@ export default function ProfileScreen() {
 
       if (response.ok) {
         if (!updates) showToast('Profile updated successfully.', 'success');
-        updateUser(data.user);
+        updateUser({ ...user, ...data.user });
       } else {
         showToast(data.message || 'Could not update profile.', 'error');
       }
@@ -275,7 +275,7 @@ export default function ProfileScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <View style={styles.headerContainer}>
-          <Pressable onPress={pickBanner} disabled={uploadingBanner}>
+          <Pressable onPress={pickBanner} disabled={uploadingBanner} style={styles.bannerPressable}>
             {banner ? (
               <ExpoImage
                 source={{ uri: getImageUrl(banner) }}
@@ -403,6 +403,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   headerContainer: { alignItems: 'center', paddingBottom: 20 },
+  bannerPressable: { width: '100%', height: 140 },
   headerBackground: { width: '100%', height: 140, position: 'absolute', top: 0 },
   bannerEditBadge: {
     position: 'absolute', top: 100, right: 16,
