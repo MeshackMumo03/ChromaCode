@@ -1,18 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, TextInput, ScrollView, View, TouchableOpacity, Alert, RefreshControl, Pressable } from 'react-native';
-import { Image as ExpoImage } from 'expo-image';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ThemedView } from '@/components/themed-view';
-import { ThemedText } from '@/components/themed-text';
-import { useAuth } from '@/hooks/useAuth';
-import { useRouter, useNavigation } from 'expo-router';
 import { StyledButton } from '@/components/StyledButton';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { getBaseUrl, getImageUrl } from '@/constants/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { getBaseUrl, getImageUrl } from '@/constants/api';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
-import * as ImagePicker from 'expo-image-picker';
+import { uploadFileToEndpoint } from '@/utils/uploadFile';
 import { Ionicons } from '@expo/vector-icons';
+import { Image as ExpoImage } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
+import { useNavigation, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const BASE_URL = getBaseUrl();
 
@@ -23,8 +24,10 @@ export default function ProfileScreen() {
   const [username, setUsername] = useState(user?.username || '');
   const [email, setEmail] = useState(user?.email || '');
   const [profilePicture, setProfilePicture] = useState(user?.profilePicture || '');
+  const [banner, setBanner] = useState(user?.banner || '');
   const [friendRequests, setFriendRequests] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
@@ -52,6 +55,7 @@ export default function ProfileScreen() {
       setUsername(user.username);
       setEmail(user.email);
       setProfilePicture(user.profilePicture);
+      setBanner(user.banner || '');
       fetchFriendRequests();
     }
   }, [user]);
@@ -69,7 +73,7 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleUpdateProfile = async (imageUri?: string) => {
+  const handleUpdateProfile = async (updates?: { profilePicture?: string; banner?: string }) => {
     if (!token) {
       showToast('Not authenticated.', 'error');
       return;
@@ -82,17 +86,18 @@ export default function ProfileScreen() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ 
-          username, 
-          email, 
-          profilePicture: imageUri || profilePicture 
+        body: JSON.stringify({
+          username,
+          email,
+          profilePicture: updates?.profilePicture ?? profilePicture,
+          banner: updates?.banner ?? banner,
         }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        if (!imageUri) showToast('Profile updated successfully.', 'success');
+        if (!updates) showToast('Profile updated successfully.', 'success');
         updateUser(data.user);
       } else {
         showToast(data.message || 'Could not update profile.', 'error');
@@ -102,34 +107,53 @@ export default function ProfileScreen() {
     }
   };
 
-  const uploadToBackend = async (uri: string) => {
+  const uploadToBackend = async (uri: string, fileName?: string, mimeType?: string) => {
     setRefreshing(true);
-    const formData = new FormData();
-    formData.append('image', {
-      uri,
-      type: 'image/jpeg',
-      name: 'avatar.jpg',
-    } as any);
-
     try {
-      const response = await fetch(`${BASE_URL}/users/upload`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-      });
-      const data = await response.json();
-      if (data.imageUrl) {
+      const data = await uploadFileToEndpoint(
+        `${BASE_URL}/users/upload`,
+        uri,
+        'image',
+        token,
+        fileName || 'avatar.jpg',
+        mimeType || 'image/jpeg',
+      );
+      if (data?.imageUrl) {
         setProfilePicture(data.imageUrl);
-        handleUpdateProfile(data.imageUrl);
+        handleUpdateProfile({ profilePicture: data.imageUrl });
       } else {
-        showToast(data.message || 'Could not upload image.', 'error');
+        showToast(data?.message || 'Could not upload image.', 'error');
       }
-    } catch (error) {
-      showToast('Could not upload image to server.', 'error');
+    } catch (error: any) {
+      console.error('Profile picture upload error:', error);
+      showToast(error?.message || 'Could not upload image to server.', 'error');
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const uploadBanner = async (uri: string, fileName?: string, mimeType?: string) => {
+    setUploadingBanner(true);
+    try {
+      const data = await uploadFileToEndpoint(
+        `${BASE_URL}/users/upload`,
+        uri,
+        'image',
+        token,
+        fileName || 'banner.jpg',
+        mimeType || 'image/jpeg',
+      );
+      if (data?.imageUrl) {
+        setBanner(data.imageUrl);
+        handleUpdateProfile({ banner: data.imageUrl });
+      } else {
+        showToast(data?.message || 'Could not upload banner.', 'error');
+      }
+    } catch (error: any) {
+      console.error('Banner upload error:', error);
+      showToast(error?.message || 'Could not upload banner to server.', 'error');
+    } finally {
+      setUploadingBanner(false);
     }
   };
 
@@ -141,14 +165,35 @@ export default function ProfileScreen() {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.5,
     });
 
     if (!result.canceled) {
-      uploadToBackend(result.assets[0].uri);
+      const asset = result.assets[0];
+      uploadToBackend(asset.uri, asset.fileName || undefined, asset.mimeType || undefined);
+    }
+  };
+
+  const pickBanner = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      showToast('Camera roll permissions required.', 'error');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.5,
+    });
+
+    if (!result.canceled) {
+      const asset = result.assets[0];
+      uploadBanner(asset.uri, asset.fileName || undefined, asset.mimeType || undefined);
     }
   };
 
@@ -230,8 +275,22 @@ export default function ProfileScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <View style={styles.headerContainer}>
-          <View style={[styles.headerBackground, { backgroundColor: colors.tint + '80' }]} />
-          
+          <Pressable onPress={pickBanner} disabled={uploadingBanner}>
+            {banner ? (
+              <ExpoImage
+                source={{ uri: getImageUrl(banner) }}
+                style={styles.headerBackground}
+                contentFit="cover"
+                transition={300}
+              />
+            ) : (
+              <View style={[styles.headerBackground, { backgroundColor: colors.tint + '80' }]} />
+            )}
+            <View style={[styles.bannerEditBadge, { backgroundColor: colors.tint }]}>
+              <Ionicons name="camera" size={14} color="#FFF" />
+            </View>
+          </Pressable>
+
           <View style={styles.profileSection}>
             <Pressable onPress={pickImage} style={[styles.profilePictureContainer, { borderColor: colors.background }]}>
                 <ExpoImage 
@@ -345,6 +404,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   headerContainer: { alignItems: 'center', paddingBottom: 20 },
   headerBackground: { width: '100%', height: 140, position: 'absolute', top: 0 },
+  bannerEditBadge: {
+    position: 'absolute', top: 100, right: 16,
+    width: 32, height: 32, borderRadius: 16,
+    justifyContent: 'center', alignItems: 'center',
+  },
   profileSection: { alignItems: 'center', marginTop: 70, width: '100%' },
   profilePictureContainer: {
     width: 120, height: 120, borderRadius: 60,

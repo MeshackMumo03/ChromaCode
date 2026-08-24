@@ -1,44 +1,44 @@
 import { StyledButton } from "@/components/StyledButton";
 import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
-import { getBaseUrl, getImageUrl, getVideoThumbnailUrl, getGroupImageUrl } from "@/constants/api";
+import { getBaseUrl, getGroupImageUrl, getImageUrl, getVideoThumbnailUrl } from "@/constants/api";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAuth } from "@/hooks/useAuth";
 import { useConversations } from "@/hooks/useConversations";
 import { useSocket } from "@/hooks/useSocket";
 import { useToast } from "@/hooks/useToast";
+import { uploadFileToEndpoint } from "@/utils/uploadFile";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { AudioModule, useAudioPlayer, useAudioRecorder, RecordingPresets } from "expo-audio";
+import { AudioModule, RecordingPresets, useAudioPlayer, useAudioRecorder } from "expo-audio";
 import * as Haptics from "expo-haptics";
 
+import { Image as ExpoImage } from "expo-image";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
-import React, {
-  memo,
-  useCallback,
-  useEffect,
-  useRef,
-  useState
+import {
+    memo,
+    useCallback,
+    useEffect,
+    useRef,
+    useState
 } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  FlatList,
-  KeyboardAvoidingView,
-  Linking,
-  Modal,
-  PanResponder,
-  Platform,
-  Pressable,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Animated,
+    FlatList,
+    KeyboardAvoidingView,
+    Linking,
+    Modal,
+    PanResponder,
+    Platform,
+    Pressable,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
-import { Image as ExpoImage } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import * as DocumentPicker from "expo-document-picker";
@@ -1093,34 +1093,14 @@ export default function ChatScreen() {
     if (!token) return null;
     setUploading(true);
     try {
-      const formData = new FormData();
-      const cleanUri = Platform.OS === "ios" ? uri.replace("file://", "") : uri;
-
-      formData.append("file", {
-        uri: cleanUri,
-        name: name,
-        type: type,
-      } as any);
-
-      const response = await fetch(`${BASE_URL}/conversations/upload`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      const responseText = await response.text();
-      if (!response.ok) {
-        let errorMsg = "Upload failed";
-        try {
-          const errorJson = JSON.parse(responseText);
-          errorMsg = errorJson.message || errorMsg;
-        } catch (e) {}
-        showToast(errorMsg, "error", "Upload failed");
-        return null;
-      }
-      return JSON.parse(responseText);
+      return await uploadFileToEndpoint(
+        `${BASE_URL}/conversations/upload`,
+        uri,
+        "file",
+        token,
+        name,
+        type,
+      );
     } catch (error: any) {
       console.error("Upload error:", error);
       showToast(error.message || "Could not upload file", "error", "Upload error");

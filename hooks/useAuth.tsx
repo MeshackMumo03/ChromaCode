@@ -1,13 +1,14 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import * as SecureStore from 'expo-secure-store'; // For storing JWT securely
-import { useRouter } from 'expo-router'; // Import useRouter
 import { getBaseUrl } from '@/constants/api'; // Import getBaseUrl from centralized file
+import { useRouter } from 'expo-router'; // Import useRouter
+import * as SecureStore from 'expo-secure-store'; // For storing JWT securely
+import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
 export interface User {
   _id: string;
   username: string;
   email: string;
   profilePicture: string;
+  banner?: string;
   friends: string[];
   pushToken?: string;
   blockedUsers?: string[];
@@ -106,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           username: data.username,
           email: data.email,
           profilePicture: data.profilePicture,
+          banner: data.banner,
           friends: data.friends,
           pushToken: data.pushToken
         });

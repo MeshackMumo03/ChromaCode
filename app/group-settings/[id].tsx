@@ -1,18 +1,17 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, TextInput, Alert, TouchableOpacity, View, ActivityIndicator, ScrollView, RefreshControl, Pressable } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
-import { useAuth } from '@/hooks/useAuth';
-import { useRouter, useLocalSearchParams, useNavigation } from 'expo-router';
+import { getBaseUrl, getImageUrl } from '@/constants/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { getBaseUrl, getImageUrl } from '@/constants/api';
-import { StyledButton } from '@/components/StyledButton';
-import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import { Image as ExpoImage } from 'expo-image';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
+import { uploadFileToEndpoint } from '@/utils/uploadFile';
+import { Ionicons } from '@expo/vector-icons';
+import { Image as ExpoImage } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const BASE_URL = getBaseUrl();
 
@@ -93,34 +92,27 @@ export default function GroupSettingsScreen() {
     }
   };
 
-  const uploadToBackend = async (uri: string) => {
+  const uploadToBackend = async (uri: string, fileName?: string, mimeType?: string) => {
     setSaving(true);
-    const formData = new FormData();
-    formData.append('image', {
-      uri,
-      type: 'image/jpeg',
-      name: 'group.jpg',
-    } as any);
-
     try {
-      const response = await fetch(`${BASE_URL}/users/upload`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-      });
-      const data = await response.json();
-      if (data.imageUrl) {
+      const data = await uploadFileToEndpoint(
+        `${BASE_URL}/users/upload`,
+        uri,
+        'image',
+        token,
+        fileName || 'group.jpg',
+        mimeType || 'image/jpeg',
+      );
+      if (data?.imageUrl) {
         setGroupImage(data.imageUrl);
         handleUpdateGroup(data.imageUrl);
       } else {
         console.error('Backend upload error:', data);
-        showToast(data.message || 'Could not upload image.', 'error', 'Upload Failed');
+        showToast(data?.message || 'Could not upload image.', 'error', 'Upload Failed');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Backend upload error:', error);
-      showToast('Could not upload image to server.', 'error', 'Upload Failed');
+      showToast(error?.message || 'Could not upload image to server.', 'error', 'Upload Failed');
     } finally {
       setSaving(false);
     }
@@ -136,14 +128,15 @@ export default function GroupSettingsScreen() {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.5,
     });
 
     if (!result.canceled) {
-      uploadToBackend(result.assets[0].uri);
+      const asset = result.assets[0];
+      uploadToBackend(asset.uri, asset.fileName || undefined, asset.mimeType || undefined);
     }
   };
 

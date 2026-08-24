@@ -375,6 +375,7 @@ const loginUser = asyncHandler(async (req, res) => {
             username: user.username,
             email: user.email,
             profilePicture: user.profilePicture,
+            banner: user.banner,
             friends: user.friends,
             pushToken: user.pushToken,
             token: generateToken(user._id),
@@ -416,6 +417,9 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     user.username = req.body.username || user.username;
     user.email = req.body.email || user.email;
     user.profilePicture = req.body.profilePicture || user.profilePicture;
+    if (typeof req.body.banner === 'string') {
+      user.banner = req.body.banner;
+    }
 
     if (req.body.password) {
       const salt = await bcrypt.genSalt(10);
@@ -430,6 +434,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
         username: updatedUser.username,
         email: updatedUser.email,
         profilePicture: updatedUser.profilePicture,
+        banner: updatedUser.banner,
         friends: updatedUser.friends,
         pushToken: updatedUser.pushToken,
       },
