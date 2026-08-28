@@ -9,17 +9,17 @@
  * The optional `isDark` prop lets ToastProvider override OS-level detection
  * with the user's explicit in-app theme preference.
  */
-import React, { useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  Animated,
-  Easing,
-  StyleSheet,
-  Platform,
-  useColorScheme as useRNColorScheme,
-} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect, useMemo } from 'react';
+import {
+    Animated,
+    Easing,
+    Platform,
+    StyleSheet,
+    Text,
+    useColorScheme as useRNColorScheme,
+    View,
+} from 'react-native';
 
 export type ToastType = 'success' | 'error' | 'info';
 
@@ -56,8 +56,8 @@ export const InAppToast: React.FC<InAppToastProps> = ({ config, onHide, isDark: 
   const scheme = useRNColorScheme();
   const isDark = isDarkProp !== undefined ? isDarkProp : scheme === 'dark';
 
-  const translateY = useRef(new Animated.Value(-120)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useMemo(() => new Animated.Value(-120), []);
+  const opacity = useMemo(() => new Animated.Value(0), []);
 
   useEffect(() => {
     if (config.visible) {
