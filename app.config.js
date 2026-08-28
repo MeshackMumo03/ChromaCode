@@ -2,7 +2,7 @@ export default {
   "expo": {
     "name": "chromacode",
     "slug": "chromacode",
-    "version": "2.72",
+    "version": "2.73",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "chromacode",
@@ -59,9 +59,7 @@ export default {
         }
       ]
     ],
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "2.71",
     "updates": {
       "url": "https://u.expo.dev/8fb4d373-8dce-4372-b53f-c46c2a075f17"
     },
