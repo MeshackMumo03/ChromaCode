@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/useToast';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Animated,
@@ -51,7 +51,7 @@ export default function ChromaScreen() {
   const { showToast } = useToast();
 
   // FAB animation
-  const fabScale = useRef(new Animated.Value(1)).current;
+  const fabScale = useMemo(() => new Animated.Value(1), []);
   const onFabPressIn = () =>
     Animated.spring(fabScale, { toValue: 0.9, useNativeDriver: true }).start();
   const onFabPressOut = () =>
@@ -267,7 +267,7 @@ export default function ChromaScreen() {
                 <ThemedText style={{ fontSize: 60, marginBottom: 16 }}>🎨</ThemedText>
                 <ThemedText style={[styles.emptyTitle, { color: colors.text }]}>No codes yet</ThemedText>
                 <ThemedText style={[styles.emptyBody, { color: colors.icon }]}>
-                  Tap the "Manage Codes" button to create your first chroma code!
+                  Tap the &quot;Manage Codes&quot; button to create your first chroma code!
                 </ThemedText>
               </View>
             ) : (
