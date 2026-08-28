@@ -1,0 +1,16 @@
+#!/bin/sh
+# Auto-bumps the app version on every commit so it increments with every
+# push to GitHub. Set SKIP_VERSION_BUMP=1 to skip (e.g. for a commit that
+# shouldn't count as a release, or to avoid double-bumping during a rebase).
+#
+# Enabled via: git config core.hooksPath .githooks
+
+if [ -n "$SKIP_VERSION_BUMP" ]; then
+  exit 0
+fi
+
+node scripts/bump-version.js || exit 0
+
+git add package.json app.config.js constants/version.ts 2>/dev/null
+
+exit 0

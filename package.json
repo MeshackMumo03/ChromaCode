@@ -11,7 +11,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "backend": "dotenv -e ./backend/.env node backend/src/server.js",
-    "postinstall": "node -e \"const fs=require('fs'); const path=require('path'); const src=path.join('node_modules', 'hermes-compiler', 'hermesc'); const dest=path.join('node_modules', 'react-native', 'sdks', 'hermesc'); if(fs.existsSync(src) && !fs.existsSync(dest)){ fs.mkdirSync(path.dirname(dest), {recursive:true}); try { fs.symlinkSync(path.resolve(src), dest, 'junction'); console.log('Fixed hermesc path'); } catch(e) { console.log('Symlink failed, copying...'); /* fallback for systems without symlink permissions */ } }\""
+    "postinstall": "node -e \"const fs=require('fs'); const path=require('path'); const src=path.join('node_modules', 'hermes-compiler', 'hermesc'); const dest=path.join('node_modules', 'react-native', 'sdks', 'hermesc'); if(fs.existsSync(src) && !fs.existsSync(dest)){ fs.mkdirSync(path.dirname(dest), {recursive:true}); try { fs.symlinkSync(path.resolve(src), dest, 'junction'); console.log('Fixed hermesc path'); } catch(e) { console.log('Symlink failed, copying...'); /* fallback for systems without symlink permissions */ } }\" && node scripts/setup-git-hooks.js"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
