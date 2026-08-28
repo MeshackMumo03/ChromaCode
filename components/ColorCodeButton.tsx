@@ -1,15 +1,14 @@
-import React from 'react';
-import {
-  TouchableOpacity,
-  StyleSheet,
-  GestureResponderEvent,
-  View,
-  ViewStyle,
-} from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Code } from '@/constants/codes';
-import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Ionicons } from '@expo/vector-icons';
+import {
+    GestureResponderEvent,
+    StyleSheet,
+    TouchableOpacity,
+    View,
+    ViewStyle,
+} from 'react-native';
 
 type ColorCodeButtonProps = {
   code: Code;
@@ -90,7 +89,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 16,
   },
   colorWash: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     left: 6,
     borderRadius: 16,
   },

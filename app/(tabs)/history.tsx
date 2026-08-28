@@ -1,22 +1,21 @@
-import React, { useCallback } from 'react';
-import {
-  StyleSheet,
-  FlatList,
-  View,
-  ActivityIndicator,
-  RefreshControl,
-  TouchableOpacity,
-  Animated,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
-import { useHistory, HistoryItem } from '@/hooks/useHistory';
+import { ThemedView } from '@/components/themed-view';
+import { getImageUrl } from '@/constants/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Image as ExpoImage } from 'expo-image';
-import { getImageUrl } from '@/constants/api';
+import { HistoryItem, useHistory } from '@/hooks/useHistory';
 import { Ionicons } from '@expo/vector-icons';
+import { Image as ExpoImage } from 'expo-image';
+import React, { useCallback } from 'react';
+import {
+    ActivityIndicator,
+    FlatList,
+    RefreshControl,
+    StyleSheet,
+    TouchableOpacity,
+    View
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -388,7 +387,7 @@ const styles = StyleSheet.create({
     width: 6,
   },
   cardWash: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     left: 6,
   },
   cardBody: {

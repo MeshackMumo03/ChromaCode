@@ -753,7 +753,7 @@ export default function ChatScreen() {
     [id, conversation],
   );
 
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
@@ -1913,7 +1913,7 @@ const styles = StyleSheet.create({
   messageText: { fontSize: 16, lineHeight: 22 },
   messageImage: { width: "100%", aspectRatio: 1, borderRadius: 10 },
   playOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(0,0,0,0.3)",
     justifyContent: "center",
     alignItems: "center",

@@ -1,36 +1,32 @@
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  StyleSheet,
-  FlatList,
-  Alert,
-  View,
-  ActivityIndicator,
-  RefreshControl,
-  TouchableOpacity,
-  Animated,
-  Easing,
-  Platform,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ThemedView } from '@/components/themed-view';
-import { ThemedText } from '@/components/themed-text';
-import { Code } from '@/constants/codes';
 import { ColorCodeButton } from '@/components/ColorCodeButton';
-import { useHistory } from '@/hooks/useHistory';
-import { useSettings } from '@/hooks/useSettings';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
 import UserSelectionModal, { SelectionType } from '@/components/UserSelectionModal';
-import { useAuth } from '@/hooks/useAuth';
+import { getBaseUrl } from '@/constants/api';
+import { Code } from '@/constants/codes';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAuth } from '@/hooks/useAuth';
 import { useCodes } from '@/hooks/useCodes';
-import { useToast } from '@/hooks/useToast';
-import { useRouter, useFocusEffect } from 'expo-router';
-import { getBaseUrl } from '@/constants/api';
-import * as Haptics from 'expo-haptics';
+import { useHistory } from '@/hooks/useHistory';
+import { useSettings } from '@/hooks/useSettings';
 import { useSocket } from '@/hooks/useSocket';
+import { useToast } from '@/hooks/useToast';
 import { Ionicons } from '@expo/vector-icons';
-import { StyledButton } from '@/components/StyledButton';
+import * as Haptics from 'expo-haptics';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    Animated,
+    FlatList,
+    RefreshControl,
+    StyleSheet,
+    TouchableOpacity,
+    View
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const BASE_URL = getBaseUrl();
 
@@ -368,7 +364,7 @@ const styles = StyleSheet.create({
     width: 8,
   },
   previewColorWash: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     left: 8,
   },
   previewContent: {
