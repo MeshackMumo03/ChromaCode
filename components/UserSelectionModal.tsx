@@ -1,25 +1,25 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  Modal,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  View,
-  TextInput,
-  ActivityIndicator,
-  Animated,
-  Easing,
-} from 'react-native';
-import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
-import { useAuth } from '@/hooks/useAuth';
+import { ThemedView } from '@/components/themed-view';
+import { getBaseUrl, getGroupImageUrl, getImageUrl } from '@/constants/api';
 import { Code } from '@/constants/codes';
-import { getBaseUrl, getImageUrl, getGroupImageUrl } from '@/constants/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/useToast';
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
-import { useToast } from '@/hooks/useToast';
+import { useCallback, useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Animated,
+    Easing,
+    FlatList,
+    Modal,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 
 const BASE_URL = getBaseUrl();
 
@@ -127,11 +127,26 @@ export default function UserSelectionModal({
     }
   }, [token]);
 
-  useEffect(() => {
+  // Reset local UI state during render when the modal transitions to visible,
+  // instead of calling setState synchronously inside an effect (avoids the
+  // extra cascading render that pattern causes).
+  const [wasModalVisible, setWasModalVisible] = useState(modalVisible);
+  if (modalVisible !== wasModalVisible) {
+    setWasModalVisible(modalVisible);
     if (modalVisible) {
-      fetchData();
       setSearch('');
       setActiveTab('friends');
+    }
+  }
+
+  useEffect(() => {
+    if (modalVisible) {
+      // fetchData sets a loading flag synchronously before its first await,
+      // which is the standard "fetch on mount" pattern from React's own
+      // docs. Neither `friends`, `groups`, nor `loading` are effect
+      // dependencies, so this cannot re-trigger the effect or loop.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchData();
     }
   }, [modalVisible, fetchData]);
 
@@ -238,7 +253,7 @@ export default function UserSelectionModal({
           <View style={styles.sheetHeader}>
             <View>
               <ThemedText style={[styles.sheetTitle, { color: colors.text }]}>
-                Send "{code?.name}"
+                Send &quot;{code?.name}&quot;
               </ThemedText>
               <ThemedText style={[styles.sheetSub, { color: colors.icon }]}>
                 Choose a friend or group to send this code

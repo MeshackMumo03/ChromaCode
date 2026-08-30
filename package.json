@@ -1,7 +1,7 @@
 {
   "name": "chromacode",
   "main": "expo-router/entry",
-  "version": "2.75",
+  "version": "2.76",
   "scripts": {
     "dev": "concurrently \"expo start --tunnel --port 8081\" \"npm run backend\"",
     "dev:qr": "concurrently \"expo start --tunnel\" \"npm run backend\"",
