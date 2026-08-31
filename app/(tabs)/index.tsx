@@ -1,28 +1,29 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  StyleSheet,
-  View,
-  TextInput,
-  FlatList,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-  RefreshControl,
-  Animated,
-  Modal,
-} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'expo-router';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getBaseUrl, getImageUrl } from '@/constants/api';
-import { Ionicons } from '@expo/vector-icons';
-import { Image as ExpoImage } from 'expo-image';
+import { getReleaseNote } from '@/constants/releaseNotes';
+import { Colors } from '@/constants/theme';
+import { APP_VERSION } from '@/constants/version';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Image as ExpoImage } from 'expo-image';
+import { useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Animated,
+  FlatList,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const BASE_URL = getBaseUrl();
 
@@ -247,12 +248,14 @@ export default function HomeScreen() {
   const { showToast } = useToast();
 
   const [whatsNewVisible, setWhatsNewVisible] = useState(false);
+  const whatsNewSeenKey = `chromacode_seen_${APP_VERSION}`;
+  const releaseNote = getReleaseNote(APP_VERSION);
 
-  // Check if update notification should pop up
+  // Check if update notification should pop up for this specific version
   useEffect(() => {
     const checkVersionNotice = async () => {
       try {
-        const seen = await AsyncStorage.getItem('chromacode_seen_v2_0_50');
+        const seen = await AsyncStorage.getItem(whatsNewSeenKey);
         if (!seen) {
           setWhatsNewVisible(true);
         }
@@ -261,12 +264,12 @@ export default function HomeScreen() {
       }
     };
     checkVersionNotice();
-  }, []);
+  }, [whatsNewSeenKey]);
 
   const handleDismissWhatsNew = async () => {
     setWhatsNewVisible(false);
     try {
-      await AsyncStorage.setItem('chromacode_seen_v2_0_50', 'true');
+      await AsyncStorage.setItem(whatsNewSeenKey, 'true');
     } catch (e) {
       console.error('Failed to save version notice key', e);
     }
@@ -571,22 +574,18 @@ export default function HomeScreen() {
                 <Ionicons name="sparkles" size={28} color={colors.tint} />
               </View>
               <ThemedText style={[styles.modalTitle, { color: colors.text }]}>
-                What's New in v2.0.50 🚀
+                What&apos;s New in v{APP_VERSION} 🚀
               </ThemedText>
               <ThemedText style={[styles.modalSub, { color: colors.icon }]}>
-                Check out the latest features and visual improvements:
+                Check out the latest features and improvements:
               </ThemedText>
 
               <View style={styles.modalList}>
-                <ThemedText style={[styles.modalBullet, { color: colors.text }]}>
-                  🔍 <ThemedText style={{ fontWeight: 'bold' }}>Enlarged Search & Emoji Boxes:</ThemedText> Spacious inputs and larger emoji reaction boxes.
-                </ThemedText>
-                <ThemedText style={[styles.modalBullet, { color: colors.text }]}>
-                  🖼️ <ThemedText style={{ fontWeight: 'bold' }}>History Profile Images:</ThemedText> Recipient avatars now show custom user profile photos.
-                </ThemedText>
-                <ThemedText style={[styles.modalBullet, { color: colors.text }]}>
-                  🔒 <ThemedText style={{ fontWeight: 'bold' }}>Smart Notifications Privacy:</ThemedText> Suppresses self-delivery when logged in online.
-                </ThemedText>
+                {releaseNote.bullets.map((bullet, index) => (
+                  <ThemedText key={index} style={[styles.modalBullet, { color: colors.text }]}>
+                    {bullet}
+                  </ThemedText>
+                ))}
               </View>
 
               <TouchableOpacity

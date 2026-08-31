@@ -1,19 +1,19 @@
-import React from 'react';
-import { StyleSheet, ScrollView, View, TouchableOpacity, Linking } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack, useRouter } from 'expo-router';
-import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
+import { getReleaseNote } from '@/constants/releaseNotes';
 import { Colors } from '@/constants/theme';
+import { APP_VERSION } from '@/constants/version';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
-import { APP_VERSION } from '@/constants/version';
+import { Stack, useRouter } from 'expo-router';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function PrivacyPolicyScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
   const router = useRouter();
+  const releaseNote = getReleaseNote(APP_VERSION);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -40,27 +40,17 @@ export default function PrivacyPolicyScreen() {
           </View>
         </View>
 
-        {/* What's New in v2.0.50 Section */}
+        {/* What's New Section */}
         <View style={styles.section}>
           <ThemedText style={[styles.sectionTitle, { color: colors.text }]}>
-            🚀 What's New in Version 2.0.50
+            What&apos;s New in Version {APP_VERSION}
           </ThemedText>
           <View style={[styles.logBox, { backgroundColor: isDark ? '#1A1A26' : '#F8F9FA', borderColor: colors.icon + '20' }]}>
-            <ThemedText style={[styles.logItem, { color: colors.text }]}>
-              • <ThemedText style={{ fontWeight: 'bold' }}>Enlarged Search & Emoji Boxes:</ThemedText> Textbox inputs on Home Tab enlarged for crystal clear typing visibility; emoji boxes and badges enlarged on all screens.
-            </ThemedText>
-            <ThemedText style={[styles.logItem, { color: colors.text }]}>
-              • <ThemedText style={{ fontWeight: 'bold' }}>History Profile Images:</ThemedText> Recipient avatars in History Tab now display custom user profile pictures.
-            </ThemedText>
-            <ThemedText style={[styles.logItem, { color: colors.text }]}>
-              • <ThemedText style={{ fontWeight: 'bold' }}>Smart Notifications Privacy:</ThemedText> Self-delivered notification suppression when actively connected or using an account on-device.
-            </ThemedText>
-            <ThemedText style={[styles.logItem, { color: colors.text }]}>
-              • <ThemedText style={{ fontWeight: 'bold' }}>Custom Animated Toasts:</ThemedText> Replaced native popups with global non-blocking in-app toast banners across all flows.
-            </ThemedText>
-            <ThemedText style={[styles.logItem, { color: colors.text }]}>
-              • <ThemedText style={{ fontWeight: 'bold' }}>Swipe-to-Reply & Audio Player:</ThemedText> WhatsApp-style swipe reply gestures and audio playback controls.
-            </ThemedText>
+            {releaseNote.bullets.map((bullet, index) => (
+              <ThemedText key={index} style={[styles.logItem, { color: colors.text }]}>
+                • {bullet}
+              </ThemedText>
+            ))}
           </View>
         </View>
 
