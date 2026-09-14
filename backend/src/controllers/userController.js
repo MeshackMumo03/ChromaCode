@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { randomInt, randomBytes } = require('node:crypto');
 const User = require('../models/User');
 
 // Security Check: Ensure environment variables are set
@@ -133,7 +134,7 @@ const registerUser = asyncHandler(async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // Generate 6-digit verification code
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const verificationCode = randomInt(100000, 1000000).toString();
 
     // Create user (unverified)
     const user = await User.create({
@@ -220,7 +221,7 @@ const resendVerificationEmailHandler = asyncHandler(async (req, res) => {
     throw new Error('Please wait before requesting another code');
   }
 
-  const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const newCode = randomInt(100000, 1000000).toString();
   user.verificationCode = newCode;
   user.verificationCodeSentAt = now;
   await user.save();
@@ -254,7 +255,7 @@ const forgotPassword = asyncHandler(async (req, res) => {
     return;
   }
 
-  const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const resetCode = randomInt(100000, 1000000).toString();
   user.resetPasswordCode = resetCode;
   user.resetPasswordExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
   await user.save();
@@ -331,7 +332,7 @@ const googleLogin = asyncHandler(async (req, res) => {
     user = await User.create({
       username,
       email,
-      password: await bcrypt.hash(Math.random().toString(36), 10), // Random password
+      password: await bcrypt.hash(randomBytes(32).toString('hex'), 10), // Random password
       profilePicture: profilePicture || 'https://www.gravatar.com/avatar/?d=mp',
       isVerified: true, 
       isGoogleUser: true,
@@ -361,7 +362,7 @@ const loginUser = asyncHandler(async (req, res) => {
     if (user && (await bcrypt.compare(password, user.password))) {
         if (!user.isVerified) {
           // Resend code if trying to login unverified
-          const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+          const newCode = randomInt(100000, 1000000).toString();
           user.verificationCode = newCode;
           await user.save();
           sendVerificationEmail(email, newCode);

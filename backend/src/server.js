@@ -58,11 +58,7 @@ app.use('/api/users/reset-password', authLimiter);
 
 // CORS Configuration
 // For development, we allow all origins. In production, this should be restricted.
-const corsOptions = {
-    origin: process.env.NODE_ENV === 'production' ? process.env.ALLOWED_ORIGINS?.split(',') : '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-};
+const corsOptions = require('./config/cors');
 app.use(cors(corsOptions));
 
 app.use(express.json({ limit: '10mb' })); // Reduced limit for better security
@@ -70,10 +66,7 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 const http = require('http').createServer(app);
 const io = require('socket.io')(http, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
+    cors: corsOptions
 });
 const PORT = process.env.PORT || 5000;
 

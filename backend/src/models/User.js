@@ -14,7 +14,22 @@ const UserSchema = mongoose.Schema(
       unique: true,
       trim: true,
       lowercase: true,
-      match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please fill a valid email address'],
+      maxlength: 254,
+      validate: {
+        validator: (email) => {
+          if (typeof email !== 'string' || email.length > 254 || /\s/.test(email)) return false;
+          const parts = email.split('@');
+          if (parts.length !== 2) return false;
+          const [local, domain] = parts;
+          if (!local || local.length > 64 || !/^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+$/.test(local)) return false;
+          if (local.startsWith('.') || local.endsWith('.') || local.includes('..')) return false;
+          const labels = domain.split('.');
+          return labels.length >= 2 && labels.every((label) =>
+            label.length > 0 && label.length <= 63 && /^[A-Za-z0-9-]+$/.test(label)
+            && !label.startsWith('-') && !label.endsWith('-'));
+        },
+        message: 'Please fill a valid email address',
+      },
     },
     password: {
       type: String,

@@ -61,6 +61,19 @@ const createCode = async (req, res) => {
 // @route   PUT /api/codes/:id
 // @access  Private
 const updateCode = async (req, res) => {
+  const body = req.body;
+  const allowedFields = ['name', 'color', 'meaning'];
+  if (typeof req.params.id !== 'string' || !/^[a-fA-F0-9]{24}$/.test(req.params.id)
+    || !body || typeof body !== 'object' || Array.isArray(body)
+    || Object.keys(body).length === 0
+    || Object.keys(body).some((key) => !allowedFields.includes(key))
+    || Object.values(body).some((value) => typeof value !== 'string' || !value.trim() || value.length > 2000)) {
+    return res.status(400).json({ message: 'Provide a valid code ID and editable text fields only' });
+  }
+  const updates = {};
+  if (body.name !== undefined) updates.name = body.name.trim();
+  if (body.color !== undefined) updates.color = body.color.trim();
+  if (body.meaning !== undefined) updates.meaning = body.meaning.trim();
   const code = await Code.findById(req.params.id);
 
   if (!code) {
@@ -74,9 +87,12 @@ const updateCode = async (req, res) => {
     throw new Error('User not authorized');
   }
 
-  const updatedCode = await Code.findByIdAndUpdate(req.params.id, req.body, {
-    new: true,
-  });
+  const updatedCode = await Code.findOneAndUpdate(
+    { _id: req.params.id, user: req.user.id },
+    { $set: updates },
+    { new: true, runValidators: true },
+  );
+  if (!updatedCode) return res.status(404).json({ message: 'Code not found' });
 
   res.json(updatedCode);
 };

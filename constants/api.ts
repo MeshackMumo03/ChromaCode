@@ -59,7 +59,15 @@ export const getImageUrl = (url?: string): string => {
  */
 export const getVideoThumbnailUrl = (videoUrl?: string): string => {
   const url = getImageUrl(videoUrl);
-  if (url.includes('res.cloudinary.com')) {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return url;
+  }
+  if (parsed.hostname === 'res.cloudinary.com'
+    && (parsed.protocol === 'https:' || parsed.protocol === 'http:')
+    && !parsed.username && !parsed.password) {
     // Swap resource type and strip to a JPEG frame at second 0
     return url
       .replace('/video/upload/', '/video/upload/so_0/')
