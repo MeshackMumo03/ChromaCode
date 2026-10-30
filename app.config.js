@@ -1,8 +1,16 @@
+// iOS Google Sign-In needs its own OAuth client (Google Cloud Console ->
+// Credentials -> iOS client for bundle ID com.metrem.chromacode). The native
+// SDK is opened through the reversed client ID as a URL scheme.
+const googleIosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+const googleIosUrlScheme = googleIosClientId
+  ? `com.googleusercontent.apps.${googleIosClientId.replace('.apps.googleusercontent.com', '')}`
+  : undefined;
+
 export default {
   "expo": {
     "name": "chromacode",
     "slug": "chromacode",
-    "version": "2.78",
+    "version": "2.79",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "chromacode",
@@ -44,7 +52,17 @@ export default {
           }
         }
       ],
-      "@react-native-google-signin/google-signin",
+      googleIosUrlScheme
+        ? ["@react-native-google-signin/google-signin", { "iosUrlScheme": googleIosUrlScheme }]
+        : "@react-native-google-signin/google-signin",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos so you can share them in chats and set profile pictures.",
+          "cameraPermission": "Allow $(PRODUCT_NAME) to use your camera to take photos for chats and your profile.",
+          "microphonePermission": "Allow $(PRODUCT_NAME) to use your microphone to record voice messages."
+        }
+      ],
       "expo-video",
       "expo-font",
       "expo-secure-store",
@@ -53,7 +71,7 @@ export default {
       [
         "expo-audio",
         {
-          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone.",
+          "microphonePermission": "Allow $(PRODUCT_NAME) to use your microphone to record voice messages.",
           "recordAudioAndroid": true,
           "enableBackgroundPlayback": false
         }

@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/useToast";
 import { uploadFileToEndpoint } from "@/utils/uploadFile";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { AudioModule, RecordingPresets, useAudioPlayer, useAudioRecorder } from "expo-audio";
+import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioPlayer, useAudioRecorder } from "expo-audio";
 import * as Haptics from "expo-haptics";
 
 import { Image as ExpoImage } from "expo-image";
@@ -1153,6 +1153,10 @@ export default function ChatScreen() {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images", "videos"],
         quality: 1,
+        // iOS: hand back JPEG/H.264 MP4 instead of HEIC/HEVC .mov, so media
+        // sent from an iPhone also displays and plays on Android.
+        preferredAssetRepresentationMode:
+          ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
       });
 
       if (!result.canceled) {
@@ -1211,6 +1215,8 @@ export default function ChatScreen() {
         );
         return;
       }
+      // iOS refuses to record unless the audio session allows it.
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
       await audioRecorder.prepareToRecordAsync();
       audioRecorder.record();
       setRecording(audioRecorder);
@@ -1227,6 +1233,9 @@ export default function ChatScreen() {
     setRecording(null);
     try {
       await recording.stop();
+      // Switch the iOS audio session back to playback, otherwise voice notes
+      // play quietly through the earpiece instead of the speaker.
+      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
       const uri = recording.uri;
       if (uri) {
         const mediaData = await uploadFile(
@@ -1246,6 +1255,8 @@ export default function ChatScreen() {
     try {
       setLoadingSoundId(messageId);
       const fullUri = getImageUrl(uri);
+      // Play voice notes even when the iPhone's silent switch is on.
+      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
       audioPlayer.replace(fullUri);
       audioPlayer.play();
       setSound(audioPlayer);
