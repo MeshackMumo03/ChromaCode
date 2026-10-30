@@ -50,6 +50,8 @@ export default function LoginScreen() {
       try {
         GoogleSignin.configure({
           webClientId,
+          // Required on iOS (no GoogleService-Info.plist); ignored on Android.
+          iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
           offlineAccess: true,
         });
       } catch (e) {
@@ -94,6 +96,9 @@ export default function LoginScreen() {
       
       // Handle both v13 (response.data.user) and older versions (response.user)
       const user = response.data ? response.data.user : (response as any).user;
+      // The backend verifies this token with Google; the profile fields above
+      // are not trusted on their own.
+      const idToken = response.data ? response.data.idToken : (response as any).idToken;
       
       if (!user) {
         throw new Error('No user data returned from Google');
@@ -103,6 +108,7 @@ export default function LoginScreen() {
         email: user.email,
         username: user.name,
         profilePicture: user.photo,
+        idToken,
       });
 
       if (success) {

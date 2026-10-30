@@ -1,0 +1,62 @@
+name: CI
+
+# Runs on every pull request into v1 and on every push to v1.
+# A pull request should not be merged unless all jobs pass.
+on:
+  pull_request:
+    branches: [ "v1" ]
+  push:
+    branches: [ "v1" ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend tests & audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Security regression tests
+        run: node --test security.test.js
+      - name: Dependency audit (high and critical)
+        run: npm audit --audit-level=high --omit=dev
+
+  app:
+    name: App typecheck, lint & tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: TypeScript
+        run: npx tsc --noEmit
+      # Non-blocking for now: 53 errors already exist on v1, mostly from the
+      # newer React Hooks rules (refs/set-state-in-effect) and the k6 scripts.
+      # Remove continue-on-error once those are cleaned up.
+      - name: Lint
+        run: npx expo lint
+        continue-on-error: true
+      - name: Client security tests
+        run: node --test scripts/security.test.cjs
+      # Only critical: the remaining high advisories (zod, deepmerge,
+      # decode-uri-component) are inside Expo SDK 57 tooling and need the
+      # SDK 58 upgrade to clear. Tighten to "high" after that upgrade.
+      - name: Dependency audit (critical)
+        run: npm audit --audit-level=critical
