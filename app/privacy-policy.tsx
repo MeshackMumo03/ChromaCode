@@ -35,7 +35,7 @@ export default function PrivacyPolicyScreen() {
               ChromaCode Security & Privacy
             </ThemedText>
             <ThemedText style={[styles.versionSub, { color: colors.icon }]}>
-              Version {APP_VERSION} (Build v1-50)
+              Version {APP_VERSION}
             </ThemedText>
           </View>
         </View>
@@ -62,22 +62,32 @@ export default function PrivacyPolicyScreen() {
 
           <ThemedText style={[styles.heading, { color: colors.text }]}>1. Information We Collect</ThemedText>
           <ThemedText style={[styles.paragraph, { color: colors.icon }]}>
-            We collect your account username, email address, profile picture, and encrypted custom color codes. Push tokens are stored securely and associated exclusively with your active session to prevent notification leaks across accounts.
+            Your username, email address and password (stored only as a bcrypt hash), your profile picture and banner, the messages, photos, videos, voice notes and files you send, your colour codes and code history, your friends and blocked users, and a push notification token for your device.
           </ThemedText>
 
-          <ThemedText style={[styles.heading, { color: colors.text }]}>2. How We Protect Your Data</ThemedText>
+          <ThemedText style={[styles.heading, { color: colors.text }]}>2. Signing In with Google</ThemedText>
           <ThemedText style={[styles.paragraph, { color: colors.icon }]}>
-            In accordance with top cyber security expert standards, passwords are hashed with bcrypt, API endpoints enforce rate-limiting and NoSQL injection sanitisation (mongo-sanitize), and all network requests operate over TLS/HTTPS encryption.
+            If you sign in with Google, we receive your name, email address and profile photo from Google. Every sign-in is verified directly with Google before you are logged in. We do not get access to your Google password or any other Google data.
           </ThemedText>
 
-          <ThemedText style={[styles.heading, { color: colors.text }]}>3. Real-Time Socket Security</ThemedText>
+          <ThemedText style={[styles.heading, { color: colors.text }]}>3. How We Protect Your Data</ThemedText>
           <ThemedText style={[styles.paragraph, { color: colors.icon }]}>
-            Socket.io channels are restricted to verified participant user IDs. Push notifications are automatically suppressed when your device is active online to preserve real-time privacy.
+            The text of your messages is encrypted in our database with AES-256-GCM. All traffic between the app and our servers uses HTTPS/TLS. Passwords are hashed with bcrypt, and our servers apply rate limiting and input sanitisation to block abuse. Photos, videos and files you send are stored with Cloudinary, and anyone who has the link to one of them can open it.
           </ThemedText>
 
-          <ThemedText style={[styles.heading, { color: colors.text }]}>4. Your Controls & Data Deletion</ThemedText>
+          <ThemedText style={[styles.heading, { color: colors.text }]}>4. Real-Time Messaging</ThemedText>
           <ThemedText style={[styles.paragraph, { color: colors.icon }]}>
-            You can clear local cached data, block unwanted users, or permanently delete your account and associated messages directly from the Profile settings at any time.
+            Live chat connections only deliver a conversation&apos;s messages to its members. Push notifications are not sent while you are active in the app.
+          </ThemedText>
+
+          <ThemedText style={[styles.heading, { color: colors.text }]}>5. Services We Use</ThemedText>
+          <ThemedText style={[styles.paragraph, { color: colors.icon }]}>
+            We rely on these providers to run ChromaCode: MongoDB Atlas (database), Render (our server), Cloudinary (photos, videos and files), Brevo (verification and password-reset emails), Google (Sign in with Google) and Expo (app updates and push notifications). Each only receives the data it needs for its part.
+          </ThemedText>
+
+          <ThemedText style={[styles.heading, { color: colors.text }]}>6. Your Controls & Account Deletion</ThemedText>
+          <ThemedText style={[styles.paragraph, { color: colors.icon }]}>
+            You can block users, clear cached data, and delete your account from your Profile at any time. Deleting your account permanently removes your profile, every message you have sent (including in group chats), your direct chats, your colour codes and history, and your photos and files. This cannot be undone.
           </ThemedText>
         </View>
 

@@ -18,6 +18,16 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '2.80',
+    bullets: [
+      "Safer Google sign-in: every sign-in is now verified directly with Google.",
+      "More private chats: new messages and typing indicators only ever reach the people in that conversation.",
+      "Deleting your account now permanently removes your messages, chats, colour codes, history, photos and files.",
+      "Updated Privacy Policy that explains exactly what we store and which services we use.",
+      "Security updates across the app and server.",
+    ],
+  },
+  {
     version: '2.77',
     bullets: [
       "Rebuilt uploads: profile pictures, banners, and chat media (images, videos, documents) now upload reliably.",

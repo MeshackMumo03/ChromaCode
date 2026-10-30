@@ -19,6 +19,13 @@ jobs:
   backend:
     name: Backend tests & audit
     runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7
+        ports: [ "27017:27017" ]
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     defaults:
       run:
         working-directory: backend
@@ -30,8 +37,10 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm ci --no-audit --no-fund
-      - name: Security regression tests
-        run: node --test security.test.js
+      - name: Security and account-deletion tests
+        run: node --test security.test.js deleteAccount.test.js
+        env:
+          MONGO_TEST_URI: mongodb://localhost:27017
       - name: Dependency audit (high and critical)
         run: npm audit --audit-level=high --omit=dev
 
