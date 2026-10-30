@@ -159,3 +159,50 @@ test('email validation rejects long adversarial input without blocking', () => {
   assert.equal(result.error, undefined);
   assert.equal(result.status, 0);
 });
+
+async function googleApi(t) {
+  process.env.JWT_SECRET = process.env.JWT_SECRET || 'local-regression-test-only-not-a-deployment-secret';
+  process.env.GOOGLE_WEB_CLIENT_ID = 'test-web-client.apps.googleusercontent.com';
+  const { googleLogin } = require('./src/controllers/userController');
+  const app = express();
+  app.use(express.json());
+  app.post('/google-login', googleLogin);
+  app.use((err, req, res, next) => res.status(res.statusCode === 200 ? 500 : res.statusCode).json({ message: err.message }));
+  return serve(t, app);
+}
+
+test('google login rejects requests without a verified Google ID token', async (t) => {
+  const { client } = require('./src/utils/googleAuth');
+  const findOne = t.mock.method(User, 'findOne', async () => { throw new Error('must not reach the database'); });
+  t.mock.method(client, 'verifyIdToken', async () => { throw new Error('Invalid token signature'); });
+  const base = await googleApi(t);
+  for (const body of [{ email: 'victim@example.com', username: 'x' }, { email: 'victim@example.com', idToken: 'forged' }]) {
+    const response = await fetch(`${base}/google-login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    assert.equal(response.status, 401);
+  }
+  assert.equal(findOne.mock.callCount(), 0);
+});
+
+test('google login uses the email from the verified token, not the request body', async (t) => {
+  const { client } = require('./src/utils/googleAuth');
+  t.mock.method(client, 'verifyIdToken', async ({ audience }) => {
+    assert.ok(audience.includes('test-web-client.apps.googleusercontent.com'));
+    return { getPayload: () => ({ email: 'Real.User@example.com', email_verified: true, name: 'Real User' }) };
+  });
+  const lookups = [];
+  t.mock.method(User, 'findOne', async (query) => { lookups.push(query.email); return { id: 'u1', email: query.email, save: async () => {} }; });
+  const base = await googleApi(t);
+  const response = await fetch(`${base}/google-login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: 'valid', email: 'victim@example.com' }) });
+  assert.equal(response.status, 200);
+  assert.deepEqual(lookups, ['real.user@example.com']);
+});
+
+test('google login rejects tokens whose email Google has not verified', async (t) => {
+  const { client } = require('./src/utils/googleAuth');
+  t.mock.method(client, 'verifyIdToken', async () => ({ getPayload: () => ({ email: 'someone@example.com', email_verified: false }) }));
+  const findOne = t.mock.method(User, 'findOne', async () => null);
+  const base = await googleApi(t);
+  const response = await fetch(`${base}/google-login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: 'valid' }) });
+  assert.equal(response.status, 401);
+  assert.equal(findOne.mock.callCount(), 0);
+});

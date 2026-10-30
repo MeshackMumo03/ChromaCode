@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { randomInt, randomBytes } = require('node:crypto');
 const User = require('../models/User');
+const { verifyGoogleIdToken } = require('../utils/googleAuth');
 
 // Security Check: Ensure environment variables are set
 if (!process.env.JWT_SECRET) {
@@ -317,7 +318,18 @@ const resetPassword = asyncHandler(async (req, res) => {
 // @route   POST /api/users/google-login
 // @access  Public
 const googleLogin = asyncHandler(async (req, res) => {
-  const { email, username, profilePicture } = req.body;
+  // Never trust the email/profile sent by the client: anyone could POST any
+  // email address. Only the Google-signed ID token is proof of identity.
+  let profile;
+  try {
+    profile = await verifyGoogleIdToken(req.body?.idToken);
+  } catch (err) {
+    res.status(401);
+    throw new Error('Google sign-in could not be verified. Please update the app and try again.');
+  }
+  const { email } = profile;
+  const username = profile.name || req.body?.username || email.split('@')[0];
+  const profilePicture = profile.picture;
 
   let user = await User.findOne({ email });
 
