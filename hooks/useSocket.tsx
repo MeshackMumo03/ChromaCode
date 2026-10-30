@@ -30,6 +30,8 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       if (!socketRef.current) {
         socketRef.current = io(SOCKET_URL, {
           transports: ['websocket'], // Prefer websocket
+          // The server identifies the user from this token (not from 'join').
+          auth: { token },
         });
 
         socketRef.current.on('connect', () => {
