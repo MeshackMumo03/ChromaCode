@@ -6,7 +6,10 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      }
     },
     "preview": {
       "distribution": "internal",
@@ -16,11 +19,20 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://chromacode.onrender.com/api"
+      },
+      "ios": {
+        "simulator": false
       }
     },
     "production": {
       "channel": "production",
       "autoIncrement": true
+    },
+    "ios-simulator": {
+      "extends": "preview",
+      "ios": {
+        "simulator": true
+      }
     }
   },
   "submit": {
