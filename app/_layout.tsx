@@ -15,7 +15,7 @@ import { CodesProvider } from '@/hooks/useCodes';
 import { useNotifications } from '@/hooks/useNotifications';
 import { SocketProvider } from '@/hooks/useSocket';
 import { ConversationsProvider } from '@/hooks/useConversations';
-import { ToastProvider, useToast } from '@/hooks/useToast';
+import { ToastProvider } from '@/hooks/useToast';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const unstable_settings = {
@@ -27,32 +27,7 @@ function RootLayoutNav() {
   const { isInitializing, token } = useAuth();
   const router = useRouter();
   
-  const { showToast } = useToast();
-  
   useNotifications();
-
-  // Show update toast on new version
-  useEffect(() => {
-    const checkUpdateToast = async () => {
-      try {
-        const lastVersion = await AsyncStorage.getItem('chromacode_last_toast_version');
-        const APP_VERSION = '2.71'; // Current version
-        
-        if (lastVersion !== APP_VERSION) {
-          showToast(
-            `🎉 We're back! ChromaCode is fully restored.\n\n✅ Fixed: App startup crash\n✅ Fixed: Messages showing as encrypted text\n✅ Upgraded audio to latest SDK\n✅ Performance improvements\n\nThank you for your patience! 💜`,
-            'success',
-            '🚀 ChromaCode v' + APP_VERSION + ' — App Restored'
-          );
-          await AsyncStorage.setItem('chromacode_last_toast_version', APP_VERSION);
-        }
-      } catch (e) {
-        // ignore
-      }
-    };
-    // small delay so it shows after app renders
-    setTimeout(checkUpdateToast, 1500);
-  }, []);
 
   // Maintenance: Clear bloated cache from previous versions if needed
   useEffect(() => {

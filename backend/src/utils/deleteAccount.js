@@ -86,7 +86,7 @@ async function deleteAccount(userId) {
   const mediaUrls = [user.profilePicture, user.banner];
 
   // Direct chats: the whole conversation goes.
-  const directChats = await Conversation.find({ participants: id, isGroup: { $ne: true } }).select('_id');
+  const directChats = await Conversation.find({ participants: id, isGroup: { $ne: true } }).select('_id participants');
   const directChatIds = directChats.map((c) => c._id);
 
   // Groups: leave, hand over admin, or delete the group if nobody is left.
@@ -127,6 +127,9 @@ async function deleteAccount(userId) {
   await Code.deleteMany({ user: id });
   await Code.updateMany({ sharedWith: id }, { $pull: { sharedWith: id } });
   await HistoryItem.deleteMany({ user: id });
+  // Other people keep their own history, without any link back to this user.
+  await HistoryItem.updateMany({ recipient: id }, { $unset: { recipient: 1 } });
+  await HistoryItem.updateMany({ conversationId: { $in: deletedConversationIds } }, { $unset: { conversationId: 1 } });
 
   await User.updateMany(
     { $or: [{ friends: id }, { blockedUsers: id }, { 'friendRequests.from': id }] },
@@ -141,7 +144,12 @@ async function deleteAccount(userId) {
     conversationsDeleted: deletedConversationIds.length,
     groupsLeft: keptGroupIds.length,
     media,
+    // So the people left in these chats can be told they're gone.
+    closedChats: directChats.map((chat) => ({
+      conversationId: String(chat._id),
+      others: chat.participants.filter((p) => !p.equals(id)).map(String),
+    })),
   };
 }
 
-module.exports = { deleteAccount, parseCloudinaryUrl };
+module.exports = { deleteAccount, parseCloudinaryUrl, refreshLastMessage };

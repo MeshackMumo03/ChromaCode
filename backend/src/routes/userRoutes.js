@@ -12,7 +12,7 @@ const storage = new CloudinaryStorage({
   resourceType: 'image',
 });
 
-const upload = multer({ storage });
+const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
 router.route('/register').post(userController.registerUser);
 router.post('/login', userController.loginUser);

@@ -28,8 +28,7 @@ const storage = new CloudinaryStorage({
     resourceType: 'auto',
 });
 
-const upload = multer({ storage });
-const memoryUpload = multer({ storage: multer.memoryStorage() });
+const upload = multer({ storage, limits: { fileSize: 100 * 1024 * 1024 } });
 
 router.route('/')
     .post(startConversation)

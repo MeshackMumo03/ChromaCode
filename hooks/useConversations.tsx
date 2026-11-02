@@ -163,12 +163,22 @@ export function ConversationsProvider({ children }: { children: React.ReactNode 
         });
       };
 
+      const handleConversationDeleted = ({ conversationId }: any) => {
+        setConversations(prev => {
+          const updated = prev.filter(conv => conv._id !== conversationId);
+          AsyncStorage.setItem(CACHE_KEY_CONVERSATIONS, JSON.stringify(updated.slice(0, 50)));
+          return updated;
+        });
+      };
+
       socket.on('new_message', handleNewMessage);
       socket.on('messages_read', handleMessagesRead);
+      socket.on('conversation_deleted', handleConversationDeleted);
 
       return () => {
         socket.off('new_message', handleNewMessage);
         socket.off('messages_read', handleMessagesRead);
+        socket.off('conversation_deleted', handleConversationDeleted);
       };
     }
   }, [socket, user?._id, fetchConversations]);

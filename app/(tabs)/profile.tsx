@@ -18,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 const BASE_URL = getBaseUrl();
 
 export default function ProfileScreen() {
-  const { user, token, logout, updateUser } = useAuth();
+  const { user, token, logout, updateUser, fetchUser } = useAuth();
   const router = useRouter();
   const navigation = useNavigation();
   const [username, setUsername] = useState(user?.username || '');
@@ -210,7 +210,10 @@ export default function ProfileScreen() {
 
       if (response.ok) {
         setFriendRequests(prev => prev.filter(req => req._id !== requestId));
-        if (action === 'accept') showToast('Friend request accepted!', 'success');
+        if (action === 'accept') {
+          showToast('Friend request accepted!', 'success');
+          await fetchUser(); // Updates the Friends count
+        }
       }
     } catch (error) {
       console.error(`Error during friend request ${action}:`, error);
@@ -219,7 +222,7 @@ export default function ProfileScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchFriendRequests();
+    await Promise.all([fetchFriendRequests(), fetchUser()]);
     setRefreshing(false);
   };
 

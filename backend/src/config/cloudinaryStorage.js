@@ -40,6 +40,7 @@ class CloudinaryStorage {
           path: result.secure_url,
           filename: result.public_id,
           size: result.bytes,
+          resourceType: result.resource_type,
         });
       }
     );
@@ -50,7 +51,12 @@ class CloudinaryStorage {
 
   _removeFile(req, file, cb) {
     if (!file.filename) return cb(null);
-    cloudinary.uploader.destroy(file.filename, (error) => cb(error));
+    // Cloudinary only finds the asset under its real type (image, video or raw).
+    cloudinary.uploader.destroy(
+      file.filename,
+      { resource_type: file.resourceType || 'image', invalidate: true },
+      (error) => cb(error),
+    );
   }
 }
 
