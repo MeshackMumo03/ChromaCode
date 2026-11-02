@@ -228,7 +228,7 @@ export default function ProfileScreen() {
 
     Alert.alert(
       'Confirm Delete',
-      'Are you sure you want to delete your account? This action cannot be undone.',
+      'This permanently deletes your account, all messages you have sent, your direct chats, your colour codes and history, and your photos and files. This cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {

@@ -27,6 +27,11 @@ const protect = asyncHandler(async (req, res, next) => {
             req.user = await User.findById(decoded.id).select('-password');
             console.log('req.user set:', req.user ? 'YES' : 'NO');
 
+            // A valid token for a deleted account must not get through.
+            if (!req.user) {
+                return res.status(401).json({ message: 'Not authorized, account no longer exists' });
+            }
+
             next();
         } catch (error) {
             console.error('Error in protect middleware:', error);

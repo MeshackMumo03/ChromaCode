@@ -2,7 +2,8 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    console.log('Attempting to connect to MongoDB with URI:', process.env.MONGODB_URI);
+    // Never log the connection string: it contains the database password.
+    console.log('Connecting to MongoDB...');
     const conn = await mongoose.connect(process.env.MONGODB_URI, {
       dbName: 'ChromaCode',
     });

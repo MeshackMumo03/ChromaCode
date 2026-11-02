@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const { randomInt, randomBytes } = require('node:crypto');
 const User = require('../models/User');
 const { verifyGoogleIdToken } = require('../utils/googleAuth');
+const { deleteAccount } = require('../utils/deleteAccount');
 
 // Security Check: Ensure environment variables are set
 if (!process.env.JWT_SECRET) {
@@ -465,11 +466,14 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 // @route   DELETE /api/users/profile
 // @access  Private
 const deleteUserProfile = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user._id);
+  // Removes the user and all of their data (messages, chats, codes, history,
+  // media) — see utils/deleteAccount.js.
+  const result = await deleteAccount(req.user._id);
 
-  if (user) {
-    await user.deleteOne();
-    res.json({ message: 'User removed' });
+  if (result) {
+    // Close any live chat connections the deleted account still has open.
+    req.app?.get?.('io')?.in(String(req.user._id)).disconnectSockets(true);
+    res.json({ message: 'Your account and all of its data have been deleted.' });
   } else {
     res.status(404);
     throw new Error('User not found');

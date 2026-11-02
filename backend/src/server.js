@@ -9,6 +9,7 @@ const path = require('path');
 const fs = require('fs');
 const connectDB = require('./db');
 const protect = require('./middleware/authMiddleware');
+const { attachSocketHandlers } = require('./socket');
 
 // Routes
 const userRoutes = require('./routes/userRoutes');
@@ -70,47 +71,9 @@ const io = require('socket.io')(http, {
 });
 const PORT = process.env.PORT || 5000;
 
-// Socket.io connection handling
+// Socket.io connection handling (JWT-authenticated, see src/socket.js)
 const connectedUsers = new Map(); // userId -> socketId
-
-io.on('connection', (socket) => {
-    console.log('A user connected:', socket.id);
-
-    socket.on('join', (userId) => {
-        connectedUsers.set(userId, socket.id);
-        socket.join(userId);
-        console.log(`User ${userId} joined room ${userId}`);
-        io.emit('user_status_change', { userId, status: 'online' });
-    });
-
-    socket.on('get_online_users', () => {
-        socket.emit('online_users', Array.from(connectedUsers.keys()));
-    });
-
-    socket.on('join_conversation', (conversationId) => {
-        socket.join(conversationId);
-        console.log(`Socket ${socket.id} joined conversation room ${conversationId}`);
-    });
-
-    socket.on('typing', ({ conversationId, senderId, senderName }) => {
-        socket.to(conversationId).emit('typing', { conversationId, senderId, senderName });
-    });
-
-    socket.on('stop_typing', ({ conversationId, senderId }) => {
-        socket.to(conversationId).emit('stop_typing', { conversationId, senderId });
-    });
-
-    socket.on('disconnect', () => {
-        for (const [userId, socketId] of connectedUsers.entries()) {
-            if (socketId === socket.id) {
-                connectedUsers.delete(userId);
-                console.log(`User ${userId} disconnected`);
-                io.emit('user_status_change', { userId, status: 'offline' });
-                break;
-            }
-        }
-    });
-});
+attachSocketHandlers(io, connectedUsers);
 
 // Make io accessible in routes/controllers
 app.set('io', io);
