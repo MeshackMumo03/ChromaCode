@@ -9,6 +9,7 @@ const path = require('path');
 const fs = require('fs');
 const connectDB = require('./db');
 const protect = require('./middleware/authMiddleware');
+const errorHandler = require('./middleware/errorHandler');
 const { attachSocketHandlers } = require('./socket');
 
 // Routes
@@ -35,12 +36,6 @@ app.set('trust proxy', 1);
 
 // Security Middleware
 app.use(helmet()); // Set security HTTP headers
-app.use((req, res, next) => {
-    if (req.body) req.body = mongoSanitize(req.body);
-    if (req.query) req.query = mongoSanitize(req.query);
-    if (req.params) req.params = mongoSanitize(req.params);
-    next();
-}); // Prevent NoSQL injection attacks
 
 // Rate Limiting
 const authLimiter = rateLimit({
@@ -57,6 +52,17 @@ app.use('/api/users/register', authLimiter);
 app.use('/api/users/forgot-password', authLimiter);
 app.use('/api/users/reset-password', authLimiter);
 
+// One-time codes are only 6 digits, so guessing them is limited much harder.
+const codeLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    message: { message: 'Too many attempts from this IP, please try again after 15 minutes' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+app.use('/api/users/verify-email', codeLimiter);
+app.use('/api/users/resend-verification', codeLimiter);
+
 // CORS Configuration
 // For development, we allow all origins. In production, this should be restricted.
 const corsOptions = require('./config/cors');
@@ -64,6 +70,16 @@ app.use(cors(corsOptions));
 
 app.use(express.json({ limit: '10mb' })); // Reduced limit for better security
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+// Prevent NoSQL injection attacks. Must run after the body parsers above, since
+// req.body doesn't exist before them. mongo-sanitize strips keys in place, which
+// also covers req.query (a read-only getter in Express 5).
+app.use((req, res, next) => {
+    if (req.body === undefined) req.body = {}; // Express 5 leaves it unset on empty requests
+    mongoSanitize(req.body);
+    mongoSanitize(req.query);
+    next();
+});
 
 const http = require('http').createServer(app);
 const io = require('socket.io')(http, {
@@ -108,13 +124,6 @@ http.listen(PORT, '0.0.0.0', () => {
 });
 
 // Generic Error Handler
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
-    res.status(statusCode).json({
-        message: err.message,
-        stack: process.env.NODE_ENV === 'production' ? null : err.stack,
-    });
-});
+app.use(errorHandler);
 
 module.exports = app;

@@ -37,8 +37,8 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm ci --no-audit --no-fund
-      - name: Security and account-deletion tests
-        run: node --test security.test.js deleteAccount.test.js
+      - name: Security, account-deletion, socket and API tests
+        run: node --test security.test.js deleteAccount.test.js socket.test.js api.test.js
         env:
           MONGO_TEST_URI: mongodb://localhost:27017
       - name: Dependency audit (high and critical)

@@ -7,6 +7,39 @@ const Code = require('../models/Code');
 const { PRESET_CODES } = require('../constants/presetCodes');
 const { sendPushNotification } = require('../utils/notifications');
 const { encrypt, decrypt } = require('../utils/encryption');
+const { refreshLastMessage } = require('../utils/deleteAccount');
+
+/** Sends a live event to every member's personal room. Works on populated or plain participants. */
+const emitToParticipants = (req, conversation, event, payload) => {
+  const io = req.app.get('io');
+  conversation.participants.forEach((participant) => {
+    io.to(String(participant._id ?? participant)).emit(event, payload);
+  });
+};
+
+/** Loads a conversation the user belongs to, or responds 404 for everyone else. */
+const findMemberConversation = async (req, res, conversationId) => {
+  const conversation = await Conversation.findOne({ _id: conversationId, participants: req.user._id });
+  if (!conversation) {
+    res.status(404);
+    throw new Error('Conversation not found');
+  }
+  return conversation;
+};
+
+/** Loads a message that belongs to a conversation the user is a member of. */
+const findMemberMessage = async (req, res) => {
+  const conversation = await findMemberConversation(req, res, req.params.id);
+  const message = await Message.findOne({ _id: req.params.messageId, conversationId: conversation._id });
+  if (!message) {
+    res.status(404);
+    throw new Error('Message not found');
+  }
+  return { conversation, message };
+};
+
+const validParticipantList = (participants) => Array.isArray(participants)
+  && participants.every((id) => typeof id === 'string' && mongoose.isValidObjectId(id));
 
 /**
  * Manually populate preset codes into the message object.
@@ -40,23 +73,35 @@ const startConversation = asyncHandler(async (req, res) => {
   const { recipientId, text, codeId, replyTo, mediaType, mediaUrl, mediaData, fileName, fileSize, fileMimeType } = req.body;
   const senderId = req.user._id;
 
-  if (!recipientId && !req.body.participants) {
+  if (!recipientId) {
     res.status(400);
     throw new Error('Recipient is required');
   }
 
+  if (String(recipientId) === String(senderId)) {
+    res.status(400);
+    throw new Error('You cannot start a conversation with yourself');
+  }
+
   const recipient = await User.findById(recipientId);
-  if (!recipient && recipientId) {
+  if (!recipient) {
     res.status(404);
     throw new Error('Recipient not found');
   }
 
-  // Find existing 1-on-1 conversation
+  // Find existing 1-on-1 conversation (a two-person group is not one)
   let conversation = await Conversation.findOne({
+    isGroup: { $ne: true },
     participants: { $all: [senderId, recipientId], $size: 2 },
   });
 
-  const conversationAlreadyExists = !!conversation;
+  const hasContent = text || codeId || mediaUrl || mediaData;
+
+  // A blocked user may reopen an existing chat, but not message or start one.
+  if ((hasContent || !conversation) && recipient.blockedUsers.some((id) => id.equals(senderId))) {
+    res.status(403);
+    throw new Error('You cannot send messages to this conversation because you are blocked.');
+  }
 
   if (!conversation) {
     conversation = await Conversation.create({
@@ -64,17 +109,11 @@ const startConversation = asyncHandler(async (req, res) => {
     });
   }
 
-  // If conversation already existed and no message/code content was provided,
-  // just navigate to it without sending a redundant "Hi!" message.
-  if (conversationAlreadyExists && !text && !codeId && !mediaUrl && !mediaData) {
+  // If no message/code content was provided, just navigate to the chat
+  // without sending a redundant "Hi!" message.
+  if (!hasContent) {
     await conversation.populate('participants', 'username profilePicture');
     return res.status(200).json({ conversation, message: null });
-  }
-
-  // Require message content only if we actually intend to send a message
-  if (!text && !mediaUrl && !mediaData && !codeId) {
-    res.status(400);
-    throw new Error('Message content is required');
   }
 
   const isPreset = codeId && typeof codeId === 'string' && codeId.startsWith('preset-');
@@ -177,7 +216,7 @@ const startConversation = asyncHandler(async (req, res) => {
 const createGroupChat = asyncHandler(async (req, res) => {
   const { participants, name } = req.body;
 
-  if (!participants || !name || participants.length < 1) {
+  if (!validParticipantList(participants) || !name || participants.length < 1) {
     res.status(400);
     throw new Error('Please provide a group name and at least one other participant');
   }
@@ -296,7 +335,7 @@ const sendMessage = asyncHandler(async (req, res) => {
   const senderId = req.user._id;
   const conversationId = req.params.id;
 
-  if (!text && !mediaUrl && !mediaData) {
+  if (!text && !mediaUrl && !mediaData && !codeId) {
     res.status(400);
     throw new Error('Message content is required');
   }
@@ -383,19 +422,16 @@ const sendMessage = asyncHandler(async (req, res) => {
   await conversation.save();
 
   // Emit socket event to ALL participants (including sender for sync)
-  const io = req.app.get('io');
-  
-  conversation.participants.forEach(participantId => {
-    io.to(participantId.toString()).emit('new_message', {
-      conversationId: conversation._id,
-      message: socketMessage
-    });
+  emitToParticipants(req, conversation, 'new_message', {
+    conversationId: conversation._id,
+    message: socketMessage
   });
 
   // Send push notification to other participants (only those NOT currently online)
   const connectedUsers = req.app.get('connectedUsers') || new Map();
-  const recipients = conversation.participants.filter(p => p.toString() !== senderId.toString());
-  
+  // Participants are populated above, so compare and pass on their IDs.
+  const recipients = conversation.participants.map(p => p._id).filter(id => !id.equals(senderId));
+
   recipients.forEach(recipientId => {
     const notificationText = mediaType && mediaType !== 'none' 
       ? `Sent an ${mediaType}` 
@@ -538,6 +574,10 @@ const updateGroupChat = asyncHandler(async (req, res) => {
   if (name) conversation.name = name;
   if (groupImage !== undefined) conversation.groupImage = groupImage;
   if (participants) {
+    if (!validParticipantList(participants)) {
+      res.status(400);
+      throw new Error('Invalid participants');
+    }
     const updatedParticipants = [...new Set([...participants, req.user._id.toString()])];
     conversation.participants = updatedParticipants;
   }
@@ -561,6 +601,11 @@ const leaveGroupChat = asyncHandler(async (req, res) => {
     throw new Error('Group chat not found');
   }
 
+  if (!conversation.participants.some((p) => p.equals(req.user._id))) {
+    res.status(404);
+    throw new Error('Group chat not found');
+  }
+
   // Remove the user
   conversation.participants = conversation.participants.filter(
     p => p.toString() !== req.user._id.toString()
@@ -576,6 +621,7 @@ const leaveGroupChat = asyncHandler(async (req, res) => {
   // If no one is left, delete the group
   if (conversation.participants.length === 0) {
     await Conversation.findByIdAndDelete(req.params.id);
+    await Message.deleteMany({ conversationId: req.params.id });
     console.log('leaveGroupChat: Group dissolved');
     return res.json({ message: 'Group dissolved' });
   }
@@ -605,6 +651,7 @@ const deleteGroupChat = asyncHandler(async (req, res) => {
 
   await Conversation.findByIdAndDelete(req.params.id);
   await Message.deleteMany({ conversationId: req.params.id });
+  emitToParticipants(req, conversation, 'conversation_deleted', { conversationId: req.params.id });
 
   console.log('deleteGroupChat: Success');
   res.json({ message: 'Group chat deleted successfully' });
@@ -616,23 +663,18 @@ const deleteGroupChat = asyncHandler(async (req, res) => {
 const markMessagesAsRead = asyncHandler(async (req, res) => {
   const conversationId = req.params.id;
   const userId = req.user._id;
+  const conversation = await findMemberConversation(req, res, conversationId);
 
   await Message.updateMany(
     { conversationId, readBy: { $ne: userId } },
-    { 
+    {
       $addToSet: { readBy: userId },
-      status: 'read' 
+      status: 'read'
     }
   );
 
   // Emit socket event for real-time status update
-  const io = req.app.get('io');
-  const conversation = await Conversation.findById(conversationId);
-  const connectedUsers = req.app.get('connectedUsers');
-
-  conversation.participants.forEach(participantId => {
-    io.to(participantId.toString()).emit('messages_read', { conversationId, readerId: userId });
-  });
+  emitToParticipants(req, conversation, 'messages_read', { conversationId, readerId: userId });
 
   res.json({ message: 'Messages marked as read' });
 });
@@ -644,11 +686,7 @@ const deleteMessage = asyncHandler(async (req, res) => {
   const { id, messageId } = req.params;
   const userId = req.user._id;
 
-  const message = await Message.findById(messageId);
-  if (!message) {
-    res.status(404);
-    throw new Error('Message not found');
-  }
+  const { conversation, message } = await findMemberMessage(req, res);
 
   // Only allow sender to delete
   if (message.sender.toString() !== userId.toString()) {
@@ -658,9 +696,13 @@ const deleteMessage = asyncHandler(async (req, res) => {
 
   await message.deleteOne();
 
+  // The chat list preview must not keep pointing at the deleted message.
+  if (conversation.lastMessage && conversation.lastMessage.equals(message._id)) {
+    await refreshLastMessage(conversation._id);
+  }
+
   // Notify other participants via socket
-  const io = req.app.get('io');
-  io.to(id).emit('message_deleted', { conversationId: id, messageId });
+  emitToParticipants(req, conversation, 'message_deleted', { conversationId: id, messageId });
 
   res.json({ message: 'Message deleted' });
 });
@@ -673,22 +715,22 @@ const addReaction = asyncHandler(async (req, res) => {
   const { emoji } = req.body;
   const userId = req.user._id;
 
-  const message = await Message.findById(messageId);
-  if (!message) {
-    res.status(404);
-    throw new Error('Message not found');
+  if (typeof emoji !== 'string' || !emoji.trim()) {
+    res.status(400);
+    throw new Error('Please provide an emoji');
   }
+
+  const { conversation, message } = await findMemberMessage(req, res);
 
   // Remove existing reaction from this user if any
   message.reactions = message.reactions.filter(r => r.userId.toString() !== userId.toString());
-  
+
   // Add new reaction
   message.reactions.push({ emoji, userId });
   await message.save();
 
   // Notify participants
-  const io = req.app.get('io');
-  io.to(id).emit('message_reaction', { conversationId: id, messageId, reactions: message.reactions });
+  emitToParticipants(req, conversation, 'message_reaction', { conversationId: id, messageId, reactions: message.reactions });
 
   res.json(message.reactions);
 });
@@ -700,18 +742,13 @@ const removeReaction = asyncHandler(async (req, res) => {
   const { id, messageId } = req.params;
   const userId = req.user._id;
 
-  const message = await Message.findById(messageId);
-  if (!message) {
-    res.status(404);
-    throw new Error('Message not found');
-  }
+  const { conversation, message } = await findMemberMessage(req, res);
 
   message.reactions = message.reactions.filter(r => r.userId.toString() !== userId.toString());
   await message.save();
 
   // Notify participants
-  const io = req.app.get('io');
-  io.to(id).emit('message_reaction', { conversationId: id, messageId, reactions: message.reactions });
+  emitToParticipants(req, conversation, 'message_reaction', { conversationId: id, messageId, reactions: message.reactions });
 
   res.json(message.reactions);
 });

@@ -87,6 +87,11 @@ const UserSchema = mongoose.Schema(
     resetPasswordExpires: {
       type: Date,
     },
+    // Wrong guesses against the current one-time code; the code dies at the limit.
+    codeAttempts: {
+      type: Number,
+      default: 0,
+    },
     isGoogleUser: {
       type: Boolean,
       default: false,

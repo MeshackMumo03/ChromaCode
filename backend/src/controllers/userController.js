@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const { randomInt, randomBytes } = require('node:crypto');
 const User = require('../models/User');
 const { verifyGoogleIdToken } = require('../utils/googleAuth');
@@ -99,15 +100,42 @@ const DISPOSABLE_EMAIL_DOMAINS = [
   'maildrop.cc', 'temp-mail.org', 'fake-mail.com'
 ];
 
+const MIN_PASSWORD_LENGTH = 6;
+const CODE_LIFETIME_MS = 10 * 60 * 1000; // The emails promise 10 minutes
+const MAX_CODE_ATTEMPTS = 5;
+
+const isNonEmptyString = (value) => typeof value === 'string' && value.length > 0;
+const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Fields safe to show one user about another (search, chats, friend lists).
+const PUBLIC_USER_FIELDS = '_id username profilePicture';
+// Fields only the account owner may see, and never the secrets.
+const PRIVATE_USER_EXCLUSIONS = '-password -verificationCode -verificationCodeSentAt -resetPasswordCode -resetPasswordExpires -codeAttempts';
+
+// Counts a wrong guess, and destroys the code once the limit is reached.
+const recordFailedCodeAttempt = async (user, clearCode) => {
+  user.codeAttempts = (user.codeAttempts || 0) + 1;
+  if (user.codeAttempts >= MAX_CODE_ATTEMPTS) {
+    clearCode(user);
+    user.codeAttempts = 0;
+  }
+  await user.save();
+};
+
 // @desc    Register new user
 // @route   POST /api/users/register
 // @access  Public
 const registerUser = asyncHandler(async (req, res) => {
     const { username, email, password } = req.body;
 
-    if (!username || !email || !password) {
+    if (!isNonEmptyString(username) || !isNonEmptyString(email) || !isNonEmptyString(password)) {
         res.status(400);
         throw new Error('Please add all fields');
+    }
+
+    if (password.length < MIN_PASSWORD_LENGTH) {
+        res.status(400);
+        throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters long`);
     }
 
     // Basic email format validation
@@ -143,8 +171,9 @@ const registerUser = asyncHandler(async (req, res) => {
         username,
         email,
         password: hashedPassword,
-        isVerified: false, 
+        isVerified: false,
         verificationCode,
+        verificationCodeSentAt: new Date(),
     });
 
     if (user) {
@@ -169,20 +198,37 @@ const registerUser = asyncHandler(async (req, res) => {
 const verifyEmail = asyncHandler(async (req, res) => {
   const { email, code } = req.body;
 
+  if (!isNonEmptyString(email) || !isNonEmptyString(code)) {
+    res.status(400);
+    throw new Error('Please provide your email and verification code');
+  }
+
   const user = await User.findOne({ email });
 
-  if (!user) {
-    res.status(404);
-    throw new Error('User not found');
+  // A verified account has no code left to match, and this endpoint hands out a
+  // login token, so it must only ever succeed for a pending verification.
+  if (!user || user.isVerified || !user.verificationCode) {
+    res.status(400);
+    throw new Error('Invalid verification code');
+  }
+
+  const expired = !user.verificationCodeSentAt
+    || Date.now() - user.verificationCodeSentAt.getTime() > CODE_LIFETIME_MS;
+  if (expired) {
+    res.status(400);
+    throw new Error('That code has expired. Please request a new one.');
   }
 
   if (user.verificationCode !== code) {
+    await recordFailedCodeAttempt(user, (u) => { u.verificationCode = undefined; });
     res.status(400);
     throw new Error('Invalid verification code');
   }
 
   user.isVerified = true;
   user.verificationCode = undefined;
+  user.verificationCodeSentAt = undefined;
+  user.codeAttempts = 0;
   await user.save();
 
   res.json({
@@ -200,7 +246,7 @@ const verifyEmail = asyncHandler(async (req, res) => {
 const resendVerificationEmailHandler = asyncHandler(async (req, res) => {
   const { email } = req.body;
 
-  if (!email) {
+  if (!isNonEmptyString(email)) {
     res.status(400);
     throw new Error('Please provide an email address');
   }
@@ -226,6 +272,7 @@ const resendVerificationEmailHandler = asyncHandler(async (req, res) => {
   const newCode = randomInt(100000, 1000000).toString();
   user.verificationCode = newCode;
   user.verificationCodeSentAt = now;
+  user.codeAttempts = 0;
   await user.save();
 
   sendVerificationEmail(email, newCode);
@@ -239,7 +286,7 @@ const resendVerificationEmailHandler = asyncHandler(async (req, res) => {
 const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
 
-  if (!email) {
+  if (!isNonEmptyString(email)) {
     res.status(400);
     throw new Error('Please provide an email address');
   }
@@ -259,7 +306,8 @@ const forgotPassword = asyncHandler(async (req, res) => {
 
   const resetCode = randomInt(100000, 1000000).toString();
   user.resetPasswordCode = resetCode;
-  user.resetPasswordExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+  user.resetPasswordExpires = Date.now() + CODE_LIFETIME_MS;
+  user.codeAttempts = 0;
   await user.save();
 
   sendPasswordResetEmail(email, resetCode);
@@ -273,14 +321,14 @@ const forgotPassword = asyncHandler(async (req, res) => {
 const resetPassword = asyncHandler(async (req, res) => {
   const { email, code, newPassword } = req.body;
 
-  if (!email || !code || !newPassword) {
+  if (!isNonEmptyString(email) || !isNonEmptyString(code) || !isNonEmptyString(newPassword)) {
     res.status(400);
     throw new Error('Please provide your email, the reset code, and a new password');
   }
 
-  if (newPassword.length < 6) {
+  if (newPassword.length < MIN_PASSWORD_LENGTH) {
     res.status(400);
-    throw new Error('Password must be at least 6 characters long');
+    throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters long`);
   }
 
   const user = await User.findOne({ email });
@@ -292,6 +340,12 @@ const resetPassword = asyncHandler(async (req, res) => {
     !user.resetPasswordExpires ||
     user.resetPasswordExpires < Date.now()
   ) {
+    if (user && user.resetPasswordCode) {
+      await recordFailedCodeAttempt(user, (u) => {
+        u.resetPasswordCode = undefined;
+        u.resetPasswordExpires = undefined;
+      });
+    }
     res.status(400);
     throw new Error('Invalid or expired reset code');
   }
@@ -300,6 +354,7 @@ const resetPassword = asyncHandler(async (req, res) => {
   user.password = await bcrypt.hash(newPassword, salt);
   user.resetPasswordCode = undefined;
   user.resetPasswordExpires = undefined;
+  user.codeAttempts = 0;
   await user.save();
 
   // Log the user straight in after a successful reset, same as verifyEmail does.
@@ -369,6 +424,11 @@ const googleLogin = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
+    if (!isNonEmptyString(email) || !isNonEmptyString(password)) {
+        res.status(401);
+        throw new Error('Invalid credentials');
+    }
+
     // Check for user email
     const user = await User.findOne({ email });
 
@@ -377,6 +437,8 @@ const loginUser = asyncHandler(async (req, res) => {
           // Resend code if trying to login unverified
           const newCode = randomInt(100000, 1000000).toString();
           user.verificationCode = newCode;
+          user.verificationCodeSentAt = new Date();
+          user.codeAttempts = 0;
           await user.save();
           sendVerificationEmail(email, newCode);
           
@@ -404,7 +466,7 @@ const loginUser = asyncHandler(async (req, res) => {
 // @route   GET /api/users
 // @access  Private
 const getUsers = asyncHandler(async (req, res) => {
-  const users = await User.find({ _id: { $ne: req.user._id } }).select('-password');
+  const users = await User.find({ _id: { $ne: req.user._id } }).select(PUBLIC_USER_FIELDS);
   res.json(users);
 });
 
@@ -412,7 +474,7 @@ const getUsers = asyncHandler(async (req, res) => {
 // @route   GET /api/users/profile
 // @access  Private
 const getUserProfile = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user._id).select('-password');
+  const user = await User.findById(req.user._id).select(PRIVATE_USER_EXCLUSIONS);
   if (user) {
     res.json(user);
   } else {
@@ -436,6 +498,10 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     }
 
     if (req.body.password) {
+      if (!isNonEmptyString(req.body.password) || req.body.password.length < MIN_PASSWORD_LENGTH) {
+        res.status(400);
+        throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters long`);
+      }
       const salt = await bcrypt.genSalt(10);
       user.password = await bcrypt.hash(req.body.password, salt);
     }
@@ -471,8 +537,13 @@ const deleteUserProfile = asyncHandler(async (req, res) => {
   const result = await deleteAccount(req.user._id);
 
   if (result) {
+    const io = req.app?.get?.('io');
     // Close any live chat connections the deleted account still has open.
-    req.app?.get?.('io')?.in(String(req.user._id)).disconnectSockets(true);
+    io?.in(String(req.user._id)).disconnectSockets(true);
+    // Anyone with one of their direct chats open needs to leave it.
+    for (const { conversationId, others } of result.closedChats) {
+      for (const otherId of others) io?.to(otherId).emit('conversation_deleted', { conversationId });
+    }
     res.json({ message: 'Your account and all of its data have been deleted.' });
   } else {
     res.status(404);
@@ -486,15 +557,15 @@ const deleteUserProfile = asyncHandler(async (req, res) => {
 const searchUsers = asyncHandler(async (req, res) => {
   const { username } = req.query;
 
-  if (!username) {
+  if (!isNonEmptyString(username)) {
     res.status(400);
     throw new Error('Please provide a username to search');
   }
 
   const users = await User.find({
-    username: { $regex: username, $options: 'i' }, 
-    _id: { $ne: req.user._id }, 
-  }).select('_id username profilePicture');
+    username: { $regex: escapeRegex(username), $options: 'i' },
+    _id: { $ne: req.user._id },
+  }).select(PUBLIC_USER_FIELDS);
 
   res.json(users);
 });
@@ -517,6 +588,12 @@ const sendFriendRequest = asyncHandler(async (req, res) => {
 
   const targetUser = await User.findById(friendId);
   if (!targetUser) {
+    res.status(404);
+    throw new Error('User not found');
+  }
+
+  // Reported the same as a missing user, so nobody can tell they've been blocked.
+  if (targetUser.blockedUsers.some((id) => id.equals(req.user._id))) {
     res.status(404);
     throw new Error('User not found');
   }
@@ -636,6 +713,12 @@ const generateToken = (id) => {
 // @access  Private
 const blockUser = asyncHandler(async (req, res) => {
   const { userIdToBlock } = req.body;
+
+  if (!mongoose.isValidObjectId(userIdToBlock)) {
+    res.status(400);
+    throw new Error('Invalid user');
+  }
+
   const user = await User.findById(req.user._id);
 
   if (user.blockedUsers.includes(userIdToBlock)) {

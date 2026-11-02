@@ -1,9 +1,24 @@
 const asyncHandler = require('express-async-handler');
+const { createHash, timingSafeEqual } = require('node:crypto');
 const BotSignal = require('../models/BotSignal');
+
+const sha256 = (value) => createHash('sha256').update(value).digest();
+
+// Only Py-bot, holding CHROMACODE_BOT_TOKEN, may use these routes. With no token
+// configured they stay closed.
+const requireBotToken = (req, res, next) => {
+  const expected = process.env.CHROMACODE_BOT_TOKEN;
+  const [scheme, supplied] = (req.headers.authorization || '').split(' ');
+  if (!expected || scheme !== 'Bearer' || !supplied
+    || !timingSafeEqual(sha256(supplied), sha256(expected))) {
+    return res.status(401).json({ message: 'Not authorized' });
+  }
+  return next();
+};
 
 // @desc    Record a new bot signal from Py-bot
 // @route   POST /api/bot/signals
-// @access  Public / Protected
+// @access  Bot token
 const recordSignal = asyncHandler(async (req, res) => {
   const { signalText, parsed, executionResult, analyticsSummary } = req.body;
 
@@ -18,12 +33,6 @@ const recordSignal = asyncHandler(async (req, res) => {
     executionResult,
     analyticsSummary,
   });
-
-  // Broadcast to connected frontend clients via Socket.IO
-  const io = req.app.get('io');
-  if (io) {
-    io.emit('bot_signal_received', newSignal);
-  }
 
   res.status(201).json(newSignal);
 });
@@ -89,4 +98,5 @@ module.exports = {
   recordSignal,
   getSignals,
   getAnalytics,
+  requireBotToken,
 };

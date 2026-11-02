@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/useToast';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image as ExpoImage } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -381,9 +381,12 @@ export default function HomeScreen() {
     }
   }, [token]);
 
-  useEffect(() => {
-    fetchFriends();
-  }, [fetchFriends]);
+  // Tabs stay mounted, so reload on focus to pick up friends accepted elsewhere.
+  useFocusEffect(
+    useCallback(() => {
+      fetchFriends();
+    }, [fetchFriends]),
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

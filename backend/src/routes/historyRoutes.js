@@ -50,14 +50,12 @@ router.delete('/:id', async (req, res) => {
         const item = await HistoryItem.findById(id);
 
         if (!item) {
-            res.status(404);
-            throw new Error('History item not found');
+            return res.status(404).json({ error: 'History item not found' });
         }
 
         // Make sure the logged in user owns the history item
         if (item.user.toString() !== req.user.id) {
-            res.status(401);
-            throw new Error('User not authorized');
+            return res.status(401).json({ error: 'User not authorized' });
         }
 
         await item.deleteOne();

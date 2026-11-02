@@ -947,10 +947,16 @@ export default function ChatScreen() {
   useEffect(() => {
     if (!socket) return;
     const handleNewMessage = (data: any) => {
+      // This event arrives for all of the user's chats; only show this one's.
+      if (String(data.conversationId) !== String(id)) return;
       setMessages((prev) => {
+        // The sender's own message also comes back from the send request.
+        if (prev.some((m) => m._id === data.message._id)) return prev;
         const updated = [data.message, ...prev];
         return updated.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       });
+      // They're looking at this chat, so it shouldn't count as unread.
+      if (data.message.sender?._id !== user?._id) markAsRead(id.toString());
       // Scroll to bottom when a new message arrives
       setTimeout(
         () => flatListRef.current?.scrollToOffset({ offset: 0, animated: true }),
@@ -1004,7 +1010,15 @@ export default function ChatScreen() {
       });
     };
 
+    const handleConversationDeleted = ({ conversationId }: any) => {
+      if (conversationId !== id) return;
+      AsyncStorage.removeItem(getChatCacheKey(id.toString()));
+      showToast("This chat is no longer available.", "info");
+      router.back();
+    };
+
     socket.on("new_message", handleNewMessage);
+    socket.on("conversation_deleted", handleConversationDeleted);
     socket.on("typing", handleTypingEvent);
     socket.on("stop_typing", handleStopTypingEvent);
     socket.on("message_reaction", handleReaction);
@@ -1024,6 +1038,7 @@ export default function ChatScreen() {
 
     return () => {
       socket.off("new_message", handleNewMessage);
+      socket.off("conversation_deleted", handleConversationDeleted);
       socket.off("typing", handleTypingEvent);
       socket.off("stop_typing", handleStopTypingEvent);
       socket.off("message_reaction", handleReaction);
@@ -1336,7 +1351,8 @@ export default function ChatScreen() {
       });
       const data = await response.json();
       if (response.ok) {
-        setMessages((prev) => prev.map((m) => (m._id === tempId ? data : m)));
+        // The live event may have delivered this message before the response did.
+        setMessages((prev) => prev.filter((m) => m._id !== data._id).map((m) => (m._id === tempId ? data : m)));
       } else {
         setMessages((prev) => prev.filter((m) => m._id !== tempId));
         showToast("Failed to send message", "error");

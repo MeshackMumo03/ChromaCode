@@ -17,26 +17,21 @@ async function authenticateSocket(socket, next) {
     const exists = await User.exists({ _id: decoded.id });
     if (!exists) return next(new Error('unauthorized'));
     socket.data.userId = String(decoded.id);
-    socket.data.conversations = new Set();
     return next();
   } catch {
     return next(new Error('unauthorized'));
   }
 }
 
-async function isConversationMember(userId, conversationId) {
-  if (!mongoose.isValidObjectId(conversationId)) return false;
-  return Boolean(await Conversation.exists({ _id: conversationId, participants: userId }));
-}
-
-/** Joins a conversation room only if the user is a participant (cached per socket). */
-async function ensureConversationAccess(socket, conversationId) {
-  if (typeof conversationId !== 'string') return false;
-  if (socket.data.conversations.has(conversationId)) return true;
-  if (!(await isConversationMember(socket.data.userId, conversationId))) return false;
-  socket.data.conversations.add(conversationId);
-  socket.join(conversationId);
-  return true;
+/**
+ * The personal rooms of a conversation's other members, or null if the user isn't
+ * a member. Checked on every event, so someone removed from a group stops at once.
+ */
+async function otherMemberRooms(userId, conversationId) {
+  if (typeof conversationId !== 'string' || !mongoose.isValidObjectId(conversationId)) return null;
+  const conversation = await Conversation.findOne({ _id: conversationId, participants: userId }).select('participants').lean();
+  if (!conversation) return null;
+  return conversation.participants.map(String).filter((id) => id !== userId);
 }
 
 function attachSocketHandlers(io, connectedUsers) {
@@ -56,18 +51,14 @@ function attachSocketHandlers(io, connectedUsers) {
       socket.emit('online_users', Array.from(connectedUsers.keys()));
     });
 
-    socket.on('join_conversation', async (conversationId) => {
-      await ensureConversationAccess(socket, conversationId);
-    });
-
     socket.on('typing', async ({ conversationId, senderName } = {}) => {
-      if (!(await ensureConversationAccess(socket, conversationId))) return;
-      socket.to(conversationId).emit('typing', { conversationId, senderId: userId, senderName });
+      const rooms = await otherMemberRooms(userId, conversationId);
+      if (rooms?.length) socket.to(rooms).emit('typing', { conversationId, senderId: userId, senderName });
     });
 
     socket.on('stop_typing', async ({ conversationId } = {}) => {
-      if (!(await ensureConversationAccess(socket, conversationId))) return;
-      socket.to(conversationId).emit('stop_typing', { conversationId, senderId: userId });
+      const rooms = await otherMemberRooms(userId, conversationId);
+      if (rooms?.length) socket.to(rooms).emit('stop_typing', { conversationId, senderId: userId });
     });
 
     socket.on('disconnect', () => {

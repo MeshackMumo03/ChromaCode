@@ -232,7 +232,7 @@ export default function SettingsScreen() {
           )}
           <SettingRow icon="shield-checkmark-outline" label="Encryption Status" onPress={() => setEncryptionModalVisible(true)}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <ThemedText style={{ color: '#34C759', fontSize: 13, fontWeight: '600' }}>E2E-class Encrypted</ThemedText>
+              <ThemedText style={{ color: '#34C759', fontSize: 13, fontWeight: '600' }}>In transit & in storage</ThemedText>
               <Ionicons name="information-circle-outline" size={16} color={colors.icon} />
             </View>
           </SettingRow>
