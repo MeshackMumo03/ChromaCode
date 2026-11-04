@@ -77,12 +77,12 @@ export default function PrivacyPolicyScreen() {
 
           <ThemedText style={[styles.heading, { color: colors.text }]}>4. Real-Time Messaging</ThemedText>
           <ThemedText style={[styles.paragraph, { color: colors.icon }]}>
-            Live chat connections only deliver a conversation&apos;s messages to its members. Push notifications are not sent while you are active in the app.
+            Live chat connections only deliver a conversation&apos;s messages to its members. When the app is closed or in the background, we send a push notification with the sender&apos;s name and a short preview of the message. You can turn notifications off in your phone&apos;s settings. Logging out stops notifications on that device.
           </ThemedText>
 
           <ThemedText style={[styles.heading, { color: colors.text }]}>5. Services We Use</ThemedText>
           <ThemedText style={[styles.paragraph, { color: colors.icon }]}>
-            We rely on these providers to run ChromaCode: MongoDB Atlas (database), Render (our server), Cloudinary (photos, videos and files), Brevo (verification and password-reset emails), Google (Sign in with Google) and Expo (app updates and push notifications). Each only receives the data it needs for its part.
+            We rely on these providers to run ChromaCode: MongoDB Atlas (database), Render (our server), Cloudinary (photos, videos and files), Brevo (verification and password-reset emails), Google (Sign in with Google) and Expo and Google Firebase (app updates and delivering push notifications). Each only receives the data it needs for its part.
           </ThemedText>
 
           <ThemedText style={[styles.heading, { color: colors.text }]}>6. Your Controls & Account Deletion</ThemedText>

@@ -18,6 +18,14 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '2.82',
+    bullets: [
+      "Push notifications are back: get new messages even when ChromaCode is closed (needs the latest app install).",
+      "Tap a notification to jump straight into that chat.",
+      "Logging out now stops notifications for that account on your phone.",
+    ],
+  },
+  {
     version: '2.80',
     bullets: [
       "Safer Google sign-in: every sign-in is now verified directly with Google.",

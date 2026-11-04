@@ -285,6 +285,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    // Stop push notifications for this account on this device. Best effort:
+    // a network failure must never block logging out.
+    if (token) {
+      fetch(`${BASE_URL}/users/push-token`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ pushToken: '' }),
+      }).catch(() => {});
+    }
     try {
       // Clear the stored token first, then clear in-memory state.
       // Navigation to the login screen is handled centrally by the root

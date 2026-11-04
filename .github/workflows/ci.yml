@@ -38,7 +38,7 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci --no-audit --no-fund
       - name: Security, account-deletion, socket and API tests
-        run: node --test security.test.js deleteAccount.test.js socket.test.js api.test.js
+        run: node --test security.test.js deleteAccount.test.js socket.test.js api.test.js push.test.js
         env:
           MONGO_TEST_URI: mongodb://localhost:27017
       - name: Dependency audit (high and critical)
@@ -63,7 +63,7 @@ jobs:
         run: npx expo lint
         continue-on-error: true
       - name: Client security tests
-        run: node --test scripts/security.test.cjs
+        run: node --test scripts/security.test.cjs scripts/notifications.test.cjs
       # Only critical: the remaining high advisories (zod, deepmerge,
       # decode-uri-component) are inside Expo SDK 57 tooling and need the
       # SDK 58 upgrade to clear. Tighten to "high" after that upgrade.
