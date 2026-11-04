@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, ReactNode } from 'react';
+import { AppState } from 'react-native';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from './useAuth';
 import { getBaseUrl } from '@/constants/api';
@@ -37,6 +38,9 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         socketRef.current.on('connect', () => {
           console.log('Global Socket: Connected');
           socketRef.current?.emit('join', user._id);
+          // Lets the server send push notifications while the app is in the
+          // background, even if this connection hasn't dropped yet.
+          socketRef.current?.emit('app_state', { active: AppState.currentState === 'active' });
         });
 
         socketRef.current.on('disconnect', () => {
@@ -56,6 +60,13 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       // Only when explicitly cleaned up or user changes
     };
   }, [token, user?._id]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      socketRef.current?.emit('app_state', { active: state === 'active' });
+    });
+    return () => sub.remove();
+  }, []);
 
   return (
     <SocketContext.Provider value={{ socket: socketRef.current }}>

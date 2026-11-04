@@ -10,7 +10,7 @@ export default {
   "expo": {
     "name": "chromacode",
     "slug": "chromacode",
-    "version": "2.81",
+    "version": "2.82",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "chromacode",
@@ -68,6 +68,13 @@ export default {
       "expo-secure-store",
       "expo-web-browser",
       "expo-updates",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#007AFF"
+        }
+      ],
       [
         "expo-audio",
         {

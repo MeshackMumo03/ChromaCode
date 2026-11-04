@@ -1,84 +1,62 @@
 const { Expo } = require('expo-server-sdk');
 const User = require('../models/User');
+const { isUserActive } = require('../socket');
 
-let expo = new Expo();
+const expo = new Expo();
+
+// Must match MESSAGES_CHANNEL_ID in hooks/useNotifications.ts.
+const ANDROID_CHANNEL_ID = 'messages';
+
+const MAX_BODY_LENGTH = 180;
 
 /**
  * Send a push notification to a user.
- * 
- * Security & UX rule: If the recipient has an active socket connection
- * (i.e. the app is currently open and in the foreground on their device),
- * we skip the push notification entirely — they already receive the message
- * in real-time via the socket 'new_message' event.
- * This also prevents the case where a user is logged into an account on
- * the same device they are sending from and receiving spurious notifications.
  *
- * @param {string|ObjectId} recipientId  - Mongoose User _id of the recipient
- * @param {string}          title        - Notification title
- * @param {string}          body         - Notification body text
- * @param {object}          data         - Optional data payload for the app
- * @param {Map}             connectedUsers - Map of userId -> socketId for online users
+ * Skipped when the recipient has the app open on screen (they see the message
+ * live through the socket). An app in the background still gets the push, even
+ * while its socket hasn't dropped yet.
+ *
+ * @param {string|ObjectId} recipientId   - Mongoose User _id of the recipient
+ * @param {string}          title         - Notification title
+ * @param {string}          body          - Notification body text
+ * @param {object}          data          - Data payload (conversationId opens that chat on tap)
+ * @param {Map}             activeSockets - userId -> sockets whose app is on screen
+ * @returns {Promise<'sent'|'skipped-active'|'no-token'|'error'>}
  */
-const sendPushNotification = async (recipientId, title, body, data = {}, connectedUsers = new Map()) => {
+const sendPushNotification = async (recipientId, title, body, data = {}, activeSockets = new Map()) => {
   const recipientIdStr = recipientId.toString();
 
-  // ── Online-presence check ──────────────────────────────────────────────────
-  // If the user is actively connected via socket (app is open and in the
-  // foreground), they already get the real-time message. Skip push to avoid
-  // double-notification and to prevent cross-account notification leakage.
-  if (connectedUsers.has(recipientIdStr)) {
-    console.log(`[Notifications] Skipping push for user ${recipientIdStr} — they are online.`);
-    return;
-  }
+  if (isUserActive(activeSockets, recipientIdStr)) return 'skipped-active';
 
-  // ── Fetch recipient & token validation ────────────────────────────────────
   const recipient = await User.findById(recipientId).select('pushToken').lean();
+  if (!recipient?.pushToken || !Expo.isExpoPushToken(recipient.pushToken)) return 'no-token';
 
-  if (!recipient || !recipient.pushToken) {
-    console.log(`[Notifications] No push token for user ${recipientIdStr}`);
-    return;
-  }
-
-  if (!Expo.isExpoPushToken(recipient.pushToken)) {
-    console.error(`[Notifications] Invalid Expo push token for user ${recipientIdStr}: ${recipient.pushToken}`);
-    return;
-  }
-
-  // ── Build & send the notification ─────────────────────────────────────────
-  const messages = [{
+  const text = typeof body === 'string' ? body : '';
+  const message = {
     to: recipient.pushToken,
     sound: 'default',
     title,
-    body: body || '',
-    data,
-    // Collapse key prevents notification spam if multiple messages arrive
-    // while the app is backgrounded.
-    channelId: 'default',
-  }];
+    body: text.length > MAX_BODY_LENGTH ? `${text.slice(0, MAX_BODY_LENGTH - 1)}…` : text,
+    data: Object.fromEntries(Object.entries(data).map(([k, v]) => [k, v == null ? v : String(v)])),
+    channelId: ANDROID_CHANNEL_ID,
+    priority: 'high',
+  };
 
   try {
-    const chunks = expo.chunkPushNotifications(messages);
-    for (const chunk of chunks) {
-      try {
-        const tickets = await expo.sendPushNotificationsAsync(chunk);
-        // Log any errors returned from Expo's push service
-        tickets.forEach(ticket => {
-          if (ticket.status === 'error') {
-            console.error(`[Notifications] Push ticket error for ${recipientIdStr}:`, ticket.message);
-            if (ticket.details?.error === 'DeviceNotRegistered') {
-              // Optionally: clear the stale token from DB here
-              console.warn(`[Notifications] DeviceNotRegistered for ${recipientIdStr} — consider clearing pushToken.`);
-            }
-          }
-        });
-      } catch (error) {
-        console.error('[Notifications] Error sending push notification chunk:', error);
+    const [ticket] = await expo.sendPushNotificationsAsync([message]);
+    if (ticket?.status === 'error') {
+      console.error(`[Notifications] Push rejected for ${recipientIdStr}:`, ticket.message);
+      if (ticket.details?.error === 'DeviceNotRegistered') {
+        // The app was uninstalled or the token expired: stop sending to it.
+        await User.updateOne({ _id: recipientId, pushToken: recipient.pushToken }, { $set: { pushToken: '' } });
       }
+      return 'error';
     }
-    console.log(`[Notifications] Push notification sent to user ${recipientIdStr}`);
+    return 'sent';
   } catch (error) {
-    console.error('[Notifications] Error preparing push notification:', error);
+    console.error('[Notifications] Error sending push notification:', error?.message || error);
+    return 'error';
   }
 };
 
-module.exports = { sendPushNotification };
+module.exports = { sendPushNotification, expo };

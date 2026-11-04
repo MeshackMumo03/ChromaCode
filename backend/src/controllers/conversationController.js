@@ -9,6 +9,19 @@ const { sendPushNotification } = require('../utils/notifications');
 const { encrypt, decrypt } = require('../utils/encryption');
 const { refreshLastMessage } = require('../utils/deleteAccount');
 
+const MEDIA_LABELS = {
+  image: '📷 Photo', video: '🎥 Video', voice: '🎤 Voice message', audio: '🎵 Audio',
+  document: '📄 Document', gif: 'GIF', sticker: 'Sticker',
+};
+
+/** The preview line of a push notification for a new message. */
+const notificationPreview = (mediaType, text, codeId) => {
+  if (mediaType && mediaType !== 'none') return MEDIA_LABELS[mediaType] || 'Sent an attachment';
+  if (text) return text;
+  if (codeId) return '🎨 Sent a colour code';
+  return 'New message';
+};
+
 /** Sends a live event to every member's personal room. Works on populated or plain participants. */
 const emitToParticipants = (req, conversation, event, payload) => {
   const io = req.app.get('io');
@@ -190,13 +203,13 @@ const startConversation = asyncHandler(async (req, res) => {
   });
 
   // Send push notification to recipient only if they are not currently online
-  const connectedUsers = req.app.get('connectedUsers') || new Map();
+  const activeSockets = req.app.get('activeSockets') || new Map();
   sendPushNotification(
     recipientId,
     `New message from ${req.user.username}`,
-    mediaType && mediaType !== 'none' ? `Sent an ${mediaType}` : text,
+    notificationPreview(mediaType, text, codeId),
     { conversationId: conversation._id },
-    connectedUsers
+    activeSockets
   );
 
   // Propagate custom code to recipient (not needed for presets — they're universal)
@@ -428,21 +441,19 @@ const sendMessage = asyncHandler(async (req, res) => {
   });
 
   // Send push notification to other participants (only those NOT currently online)
-  const connectedUsers = req.app.get('connectedUsers') || new Map();
+  const activeSockets = req.app.get('activeSockets') || new Map();
   // Participants are populated above, so compare and pass on their IDs.
   const recipients = conversation.participants.map(p => p._id).filter(id => !id.equals(senderId));
 
   recipients.forEach(recipientId => {
-    const notificationText = mediaType && mediaType !== 'none' 
-      ? `Sent an ${mediaType}` 
-      : text;
+    const notificationText = notificationPreview(mediaType, text, codeId);
 
     sendPushNotification(
       recipientId,
       conversation.isGroup ? `${conversation.name}: ${req.user.username}` : `New message from ${req.user.username}`,
       notificationText,
       { conversationId: conversation._id },
-      connectedUsers
+      activeSockets
     );
 
     // Propagate custom code to all recipients

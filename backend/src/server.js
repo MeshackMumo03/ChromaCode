@@ -89,11 +89,13 @@ const PORT = process.env.PORT || 5000;
 
 // Socket.io connection handling (JWT-authenticated, see src/socket.js)
 const connectedUsers = new Map(); // userId -> socketId
-attachSocketHandlers(io, connectedUsers);
+const activeSockets = new Map(); // userId -> sockets whose app is on screen
+attachSocketHandlers(io, connectedUsers, activeSockets);
 
 // Make io accessible in routes/controllers
 app.set('io', io);
 app.set('connectedUsers', connectedUsers);
+app.set('activeSockets', activeSockets);
 
 // Connect to MongoDB
 connectDB();

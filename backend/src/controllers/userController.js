@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const { randomInt, randomBytes } = require('node:crypto');
 const User = require('../models/User');
 const { verifyGoogleIdToken } = require('../utils/googleAuth');
+const { Expo } = require('expo-server-sdk');
 const { deleteAccount } = require('../utils/deleteAccount');
 
 // Security Check: Ensure environment variables are set
@@ -688,17 +689,20 @@ const getFriends = asyncHandler(async (req, res) => {
 // @route   PUT /api/users/push-token
 // @access  Private
 const updatePushToken = asyncHandler(async (req, res) => {
-  const { pushToken } = req.body;
-  const user = await User.findById(req.user._id);
-
-  if (user) {
-    user.pushToken = pushToken;
-    await user.save();
-    res.json({ message: 'Push token updated' });
-  } else {
-    res.status(404);
-    throw new Error('User not found');
+  const { pushToken } = req.body ?? {};
+  // '' clears the token (logout). Anything else must be a real Expo push token.
+  if (typeof pushToken !== 'string' || (pushToken !== '' && !Expo.isExpoPushToken(pushToken))) {
+    res.status(400);
+    throw new Error('Invalid push token');
   }
+
+  // One device belongs to one account at a time: if someone else logged in on
+  // this phone before, they stop getting notifications here.
+  if (pushToken) {
+    await User.updateMany({ pushToken, _id: { $ne: req.user._id } }, { $set: { pushToken: '' } });
+  }
+  await User.updateOne({ _id: req.user._id }, { $set: { pushToken } });
+  res.json({ message: pushToken ? 'Push token updated' : 'Push token cleared' });
 });
 
 // Generate JWT

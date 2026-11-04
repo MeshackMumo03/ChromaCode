@@ -34,14 +34,39 @@ async function otherMemberRooms(userId, conversationId) {
   return conversation.participants.map(String).filter((id) => id !== userId);
 }
 
-function attachSocketHandlers(io, connectedUsers) {
+/**
+ * activeSockets: userId -> Set of socket IDs whose app is on screen. Push
+ * notifications are skipped only for users in here. Apps that never report
+ * their state (older versions) count as on screen while connected, which is
+ * how push behaved before.
+ */
+function setActive(activeSockets, userId, socketId, active) {
+  const set = activeSockets.get(userId) ?? new Set();
+  if (active) set.add(socketId);
+  else set.delete(socketId);
+  if (set.size) activeSockets.set(userId, set);
+  else activeSockets.delete(userId);
+}
+
+function isUserActive(activeSockets, userId) {
+  return Boolean(activeSockets?.get(String(userId))?.size);
+}
+
+function attachSocketHandlers(io, connectedUsers, activeSockets = new Map()) {
   io.use(authenticateSocket);
 
   io.on('connection', (socket) => {
     const { userId } = socket.data;
     socket.join(userId);
     connectedUsers.set(userId, socket.id);
+    setActive(activeSockets, userId, socket.id, true);
     io.emit('user_status_change', { userId, status: 'online' });
+
+    socket.on('app_state', (payload) => {
+      if (payload && typeof payload.active === 'boolean') {
+        setActive(activeSockets, userId, socket.id, payload.active);
+      }
+    });
 
     // Older app versions still emit 'join' with their ID after connecting.
     // The room is already joined from the verified token; the payload is ignored.
@@ -62,6 +87,7 @@ function attachSocketHandlers(io, connectedUsers) {
     });
 
     socket.on('disconnect', () => {
+      setActive(activeSockets, userId, socket.id, false);
       if (connectedUsers.get(userId) === socket.id) {
         connectedUsers.delete(userId);
         io.emit('user_status_change', { userId, status: 'offline' });
@@ -70,4 +96,4 @@ function attachSocketHandlers(io, connectedUsers) {
   });
 }
 
-module.exports = { attachSocketHandlers, authenticateSocket };
+module.exports = { attachSocketHandlers, authenticateSocket, isUserActive };
