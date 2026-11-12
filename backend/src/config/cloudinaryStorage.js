@@ -1,6 +1,19 @@
 const cloudinary = require('./cloudinary');
 
 /**
+ * Cloudinary reports a rejected upload as a plain object ({ message, http_code }),
+ * not an Error, so it had no stack and the server logged only "undefined".
+ * Wrap it so the real reason reaches the logs and the error handler.
+ */
+function toUploadError(error) {
+  if (error instanceof Error && !error.http_code) return error;
+  const wrapped = new Error(error.message || 'Cloudinary upload failed');
+  wrapped.name = 'CloudinaryError';
+  wrapped.httpCode = error.http_code;
+  return wrapped;
+}
+
+/**
  * A minimal multer storage engine that streams uploaded files straight to
  * Cloudinary using the (actively maintained) cloudinary v2 SDK.
  *
@@ -34,7 +47,7 @@ class CloudinaryStorage {
       },
       (error, result) => {
         if (error) {
-          return cb(error);
+          return cb(toUploadError(error));
         }
         cb(null, {
           path: result.secure_url,
@@ -61,3 +74,4 @@ class CloudinaryStorage {
 }
 
 module.exports = CloudinaryStorage;
+module.exports.toUploadError = toUploadError;

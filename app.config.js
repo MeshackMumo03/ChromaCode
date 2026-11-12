@@ -10,7 +10,7 @@ export default {
   "expo": {
     "name": "chromacode",
     "slug": "chromacode",
-    "version": "2.82",
+    "version": "2.83",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "chromacode",
