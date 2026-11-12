@@ -1,7 +1,7 @@
 {
   "name": "chromacode",
   "main": "expo-router/entry",
-  "version": "2.87",
+  "version": "2.88",
   "scripts": {
     "dev": "concurrently \"expo start --tunnel --port 8081\" \"npm run backend\"",
     "dev:qr": "concurrently \"expo start --tunnel\" \"npm run backend\"",
@@ -64,5 +64,8 @@
     "eslint-config-expo": "~57.0.1",
     "typescript": "~6.0.3"
   },
-  "private": true
+  "private": true,
+  "overrides": {
+    "node-forge": "^1.4.3"
+  }
 }
