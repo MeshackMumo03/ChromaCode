@@ -29,7 +29,8 @@ function errorHandler(err, req, res, next) {
   if (statusCode >= 500) {
     // Not everything thrown is an Error; log what we got instead of "undefined".
     const detail = err && err.httpCode ? ` (upstream status ${err.httpCode})` : '';
-    console.error(`${req.method} ${req.originalUrl} failed${detail}:`, (err && err.stack) || err);
+    // Fixed format string: the URL is client-controlled and may contain %s etc.
+    console.error('%s %s failed%s:', req.method, req.originalUrl, detail, (err && err.stack) || err);
   }
   return res.status(statusCode).json({
     message: statusCode >= 500 ? 'Something went wrong on our side' : err.message,

@@ -67,3 +67,14 @@ test('non-Error values thrown elsewhere are logged instead of "undefined"', asyn
   assert.match(logged[0], /GET \/boom failed:/);
   assert.doesNotMatch(logged[0], /undefined/);
 });
+
+test('format characters in the URL cannot garble the error log', async (t) => {
+  const logged = [];
+  t.mock.method(console, 'error', (...args) => logged.push(format(...args)));
+  const app = express();
+  app.get('/boom', () => { throw new Error('real cause'); });
+  app.use(errorHandler);
+  const base = await serve(t, app);
+  await fetch(`${base}/boom?q=%s%o%d`);
+  assert.match(logged[0], /GET \/boom\?q=%s%o%d failed:.*real cause/s);
+});
